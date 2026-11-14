@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Zeichensatz von Dateien ohne Angabe dazu (GAEB 90, später GAEB 2000): am Inhalt schätzen und damit lesen (Ticket 136, 144;
-// D-71). Rein (A2). `TextDecoder` kennt die DOS-Codepages nicht (WHATWG Encoding), deshalb steht die obere Hälfte von
-// Codepage 850 hier als Tabelle (Unicode-Werte der Zeichen 0x80 bis 0xFF). Codepage 437 hat die deutschen Umlaute und das ß an
-// denselben Stellen; beide sind am Inhalt nicht zu unterscheiden, gelesen wird als 850 (Lesart D-144.4).
+// Zeichensatz von Dateien ohne Angabe dazu (GAEB 90; GAEB 2000 ohne oder mit unpassender Angabe, Ticket 145): am Inhalt
+// schätzen und damit lesen (Ticket 136, 144; D-71). Rein (A2). `TextDecoder` kennt die DOS-Codepages nicht (WHATWG
+// Encoding), deshalb steht die obere Hälfte von Codepage 850 hier als Tabelle (Unicode-Werte der Zeichen 0x80 bis 0xFF).
+// Codepage 437 hat die deutschen Umlaute und das ß an denselben Stellen; beide sind am Inhalt nicht zu unterscheiden, gelesen wird als 850 (Lesart D-144.4).
 
 /** `ascii`: nur 7-Bit-Zeichen; `cp850`: DOS-Codepage 437/850; `iso-8859-1`: Latin-1 (gelesen als Windows-1252). */
 export type Zeichensatz = 'ascii' | 'utf-8' | 'cp850' | 'iso-8859-1';

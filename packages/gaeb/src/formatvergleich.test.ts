@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Ticket 144, Tor E Punkt 3: Kettentest „dasselbe Modell“. Dasselbe kleine LV liegt von Hand geschrieben als GAEB DA XML 3.3,
-// DA XML 3.1 und GAEB 90 in `fixtures/gaeb-formate/` (Herkunft dort). Alle Formate ergeben dasselbe Modell bis auf die Liste
-// `FORMATUNTERSCHIEDE`; jeder Eintrag sagt, was abweicht und warum. Ticket 145 ergänzt GAEB 2000 (.p83/.p86).
+// DA XML 3.1, GAEB 90 und (Ticket 145) GAEB 2000 in `fixtures/gaeb-formate/` (Herkunft dort). Alle Formate ergeben dasselbe
+// Modell bis auf die Listen `FORMATUNTERSCHIEDE` (GAEB 90) und `FORMATUNTERSCHIEDE_2000`; jeder Eintrag sagt, was abweicht und
+// warum.
 
 import { describe, expect, it } from 'vitest';
 import { pruefeLvInvarianten, summenBerechnen } from '@tethys/kern';
@@ -61,6 +62,27 @@ const FORMATUNTERSCHIEDE = [
   },
 ] as const;
 
+/** Die dokumentierten Unterschiede zwischen GAEB 2000 und DA XML (Ticket 145); angeglichen in `vergleichsform2000`. */
+const FORMATUNTERSCHIEDE_2000 = [
+  {
+    was: 'Langtext: Listen',
+    warum:
+      'Der GAEB-2000-Leser liest den RTF-Text mit Absätzen, Zeilenumbrüchen und Auszeichnung (fett, kursiv, unterstrichen); ' +
+      'Listen erkennt er nicht, die Liste steht dort als Zeilen mit „- “. Verglichen wird der Text zeilenweise.',
+  },
+  {
+    was: 'Bedarf, Wahl, Stundenlohn, Pauschal und Kennzeichnung für den Zuschlag an der Position',
+    warum:
+      'Für GAEB 2000 ist in den frei zugänglichen Beschreibungen kein Schlüsselwort dafür belegt (D-145.4); die Datei trägt ' +
+      'diese Positionen als normale Positionen. Das Netto der .p86 enthält deshalb auch Bedarf ohne Gesamtbetrag und Wahl.',
+  },
+  {
+    was: 'Zuschlagsposition 02.0060',
+    warum:
+      'Wie eine Zuschlagsposition in GAEB 2000 steht, ist nicht belegt; die GAEB-2000-Datei hat sie nicht (wie GAEB 90).',
+  },
+] as const;
+
 /** Langtext als Zeilen: Absätze mit Umbrüchen werden Zeilen, ein neuer Absatz eine Leerzeile, Listenpunkte „- …“. */
 function zeilen(l: Langtext | LangtextInnen): string[] {
   const aus: string[] = [];
@@ -112,6 +134,17 @@ function vergleichsform(i: LvInhalt): unknown {
   return { ...i, knoten };
 }
 
+/** Das Modell mit den Angleichungen aus `FORMATUNTERSCHIEDE_2000`: wie GAEB 90, zusätzlich ohne Bedarf und Wahl. */
+function vergleichsform2000(i: LvInhalt): unknown {
+  const v = vergleichsform(i) as LvInhalt;
+  return {
+    ...v,
+    knoten: v.knoten.map((k) =>
+      k.art === 'position' ? { ...k, merkmale: { ...k.merkmale, bedarf: null, wahl: null } } : k,
+    ),
+  };
+}
+
 const positionen = (i: LvInhalt): Position[] => i.knoten.flatMap((k) => (k.art === 'position' ? [k] : []));
 const lvVon = (i: LvInhalt): Leistungsverzeichnis => {
   const { wurzelId, knoten, ...kopf } = i;
@@ -142,8 +175,35 @@ describe('Kettentest „dasselbe Modell“ (Tor E Punkt 3)', () => {
     });
   }
 
+  for (const phase of ['X83', 'X86'] as const) {
+    const d = phase.slice(1);
+    it(`${phase}: GAEB 2000 (.p${d}) ergibt dasselbe Modell bis auf die dokumentierten Unterschiede`, () => {
+      const xml = inhalt(`geraeteschuppen-3.3.${phase}`);
+      const g2000 = inhalt(`geraeteschuppen.p${d}`);
+      expect(vergleichsform2000(g2000)).toEqual(vergleichsform2000(xml));
+      expect(positionen(g2000)).toHaveLength(9);
+      expect(positionen(g2000).every((p) => p.merkmale.bedarf === null && p.merkmale.wahl === null)).toBe(
+        true,
+      );
+      // Anders als GAEB 90 bleibt die Auszeichnung erhalten (RTF).
+      expect(positionen(g2000).find((p) => p.ordnungszahl === '01.0010')?.langtext[0]).toEqual({
+        art: 'absatz',
+        inhalt: [
+          { art: 'text', text: 'Oberboden', fett: true },
+          { art: 'text', text: ' abtragen und seitlich lagern.' },
+          { art: 'umbruch' },
+          { art: 'text', text: '- Dicke bis 30 cm' },
+          { art: 'umbruch' },
+          { art: 'text', text: '- Lagerung auf der Baustelle' },
+        ],
+      });
+      expect(pruefeLvInvarianten(lvVon(g2000))).toEqual([]);
+    });
+  }
+
   it('Formatunterschiede sind begründet', () => {
-    for (const u of FORMATUNTERSCHIEDE) expect(u.warum.length, u.was).toBeGreaterThan(40);
+    for (const u of [...FORMATUNTERSCHIEDE, ...FORMATUNTERSCHIEDE_2000])
+      expect(u.warum.length, u.was).toBeGreaterThan(40);
   });
 
   it('X86: Netto der GAEB-90-Datei wie ihr Abschlusssatz, die DA-XML-Datei um den Zuschlag höher', () => {
@@ -157,10 +217,17 @@ describe('Kettentest „dasselbe Modell“ (Tor E Punkt 3)', () => {
     expect(netto('geraeteschuppen.d86')).toBe('15120.87');
     expect(netto('geraeteschuppen-3.3.X86')).toBe('15433.82');
     expect(netto('geraeteschuppen-3.1.X86')).toBe('15433.82');
+    // GAEB 2000 ohne Bedarf und Wahl: 15.120,87 + 650,00 (Bedarf ohne Gesamtbetrag) + 3.652,40 (Wahl) = 19.423,27.
+    expect(netto('geraeteschuppen.p86')).toBe('19423.27');
   });
 
-  it('jeder GAEB-90-Import trägt den festen Hinweis; die DA-XML-Dateien lesen ohne Befund', () => {
-    for (const d of ['geraeteschuppen.d83', 'geraeteschuppen.d86'])
+  it('jeder GAEB-90- und GAEB-2000-Import trägt den festen Hinweis; die DA-XML-Dateien lesen ohne Befund', () => {
+    for (const d of [
+      'geraeteschuppen.d83',
+      'geraeteschuppen.d86',
+      'geraeteschuppen.p83',
+      'geraeteschuppen.p86',
+    ])
       expect(lies(d).befunde.map((b) => b.code)).toContain('format-ungeprueft');
     for (const x of ['3.3.X83', '3.3.X86', '3.1.X83', '3.1.X86']) {
       const l = lies(`geraeteschuppen-${x}`);
@@ -198,5 +265,38 @@ describe('Kettentest „dasselbe Modell“ (Tor E Punkt 3)', () => {
       '02.0050': '2300.000',
     });
     expect(a.befunde.filter((b) => b.schwere === 'fehler')).toEqual([]);
+  });
+});
+
+describe('GAEB 2000: Angebot (.p84) gegen das LV aus der .p83', () => {
+  it('Preise je Position, Bieter aus dem Auftragnehmer der Datei', () => {
+    const lv = lvVon(lies('geraeteschuppen.p83').inhalt as LvInhalt);
+    const a = leseAngebot(lesePfad(`${ORDNER}/geraeteschuppen.p84`), {
+      lv,
+      angebotId: 'angebot-1' as AngebotId,
+      bieterId: 'bieter-1' as BieterId,
+      dateiname: 'geraeteschuppen.p84',
+    });
+    expect(a.format).toBe('gaeb-2000');
+    expect(a.bieter).toEqual({ name: 'Musterbau GmbH' });
+    const ep = Object.fromEntries(
+      (a.befehl?.angebot.positionen ?? []).map((p) => [
+        (lv.knoten.find((k) => k.id === p.positionId) as Knoten & { ordnungszahl: string }).ordnungszahl,
+        p.status === 'angeboten' ? p.einheitspreis : null,
+      ]),
+    );
+    expect(ep).toEqual({
+      '01.0010': '4.125',
+      '01.0020': '19.500',
+      '01.0030': '60.000',
+      '01.0040': '30.000',
+      '02.0010': '180.000',
+      '02.0020': '195.000',
+      '02.0030': '70.000',
+      '02.0040': '55.000',
+      '02.0050': '2300.000',
+    });
+    expect(a.befunde.filter((b) => b.schwere === 'fehler')).toEqual([]);
+    expect(a.befunde.map((b) => b.code)).toContain('format-ungeprueft');
   });
 });

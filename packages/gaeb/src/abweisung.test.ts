@@ -45,7 +45,9 @@ const satz = (art: string, inhalt: string, nummer: number): string =>
 const GAEB_90 = [satz('00', '        Testkopf von Hand', 1), satz('01', 'Rohbau', 2), satz('99', '', 3)].join(
   '\r\n',
 );
-const GAEB_2000 = ['#begin[GAEB]', '#begin[Award]', '[DP]83[end]', '#end[Award]', '#end[GAEB]'].join('\r\n');
+const GAEB_2000 = ['#begin[GAEB]', '#begin[Vergabe]', '[DP]83[end]', '#end[Vergabe]', '#end[GAEB]'].join(
+  '\r\n',
+);
 
 const einziger = (befunde: readonly GaebBefund[], code: string): GaebBefund => {
   const b = befunde.filter((x) => x.code === code);
@@ -210,21 +212,16 @@ describe('Versionen und Formate', () => {
     nutzersprache(b.meldung);
   });
 
-  it('GAEB 2000 in allen drei Lesern: erkannt und mit Satz abgewiesen', () => {
+  it('GAEB 2000 wird als LV gelesen (Ticket 145); Angebots- und Mengenleser weisen eine GAEB-2000-LV-Datei mit Satz ab', () => {
     const lv = lies(GAEB_2000, 'lv.p83');
-    expect([lv.format, lv.phase, lv.inhalt]).toEqual(['gaeb-2000', 'X83', null]);
-    expect(einziger(lv.befunde, 'format-nicht-unterstuetzt').meldung).toContain(
-      'im Format GAEB 2000 (Phase X83)',
-    );
+    expect([lv.format, lv.phase]).toEqual(['gaeb-2000', 'X83']);
+    expect(lv.befunde.map((b) => b.code)).not.toContain('format-nicht-unterstuetzt');
     const a = angebot(GAEB_2000, 'a.p84');
     expect([a.format, a.befehl]).toEqual(['gaeb-2000', null]);
-    const am = einziger(a.befunde, 'format-nicht-unterstuetzt').meldung;
-    expect(am).toContain('im Format GAEB 2000 (Phase X83)');
-    expect(
-      am.endsWith(
-        'Als Angebot wird eine Angebotsabgabe im Format GAEB DA XML (Endung .x84) oder GAEB 90 (Endung .d84) eingelesen.',
-      ),
-    ).toBe(true);
+    expect(einziger(a.befunde, 'phase-nicht-unterstuetzt').meldung).toBe(
+      'Die Datei ist eine Angebotsaufforderung (X83). Ein Leistungsverzeichnis wird als GAEB-Datei in ein Projekt ' +
+        'eingelesen. Als Angebot wird eine Angebotsabgabe (X84) eingelesen.',
+    );
     const m = x31Lesen(GAEB_2000, AUFTRAG, { dateiname: 'm.p31' });
     expect([m.format, m.aufmass]).toEqual(['gaeb-2000', null]);
     nutzersprache(einziger(m.befunde, 'format-nicht-unterstuetzt').meldung);
@@ -237,8 +234,8 @@ describe('Versionen und Formate', () => {
     expect(l.befunde.map((b) => b.code)).toEqual(['dateiart-unbekannt']);
     expect(l.befunde[0]?.meldung).toBe(
       'Die Datei ist keine GAEB-Datei (weder GAEB DA XML noch GAEB 90 oder GAEB 2000). Eingelesen werden ' +
-        'Leistungsverzeichnisse im Format GAEB DA XML (Endungen .x81, .x83 und .x86) und GAEB 90 (Endungen .d81, .d83 und ' +
-        '.d86).',
+        'Leistungsverzeichnisse im Format GAEB DA XML (Endungen .x81, .x83 und .x86), GAEB 90 (Endungen .d81, .d83 und ' +
+        '.d86) und GAEB 2000 (Endungen .p81, .p83 und .p86).',
     );
   });
 
@@ -247,7 +244,7 @@ describe('Versionen und Formate', () => {
     const b = einziger(l.befunde, 'wurzel-unerwartet');
     expect(b.meldung).toBe(
       'Die Datei ist eine XML-Datei, aber keine GAEB-Datei (ihr oberstes Element heißt „Invoice“). Als Angebot wird eine ' +
-        'Angebotsabgabe im Format GAEB DA XML (Endung .x84) oder GAEB 90 (Endung .d84) eingelesen.',
+        'Angebotsabgabe im Format GAEB DA XML (Endung .x84), GAEB 90 (Endung .d84) oder GAEB 2000 (Endung .p84) eingelesen.',
     );
     expect(b.werte).toEqual({ element: { art: 'text', wert: 'Invoice' } });
   });

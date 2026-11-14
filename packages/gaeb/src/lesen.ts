@@ -56,6 +56,8 @@ import type { Befundwerte, GaebBefund, GaebBefundcode, Rollen } from './befunde'
 import { dateiartAusText, siehtAusWieXml } from './dateiart';
 import { EPA_NUMMERN, deuteBeschriftung } from './epa';
 import { erkenne, phaseAusEndung } from './erkennung';
+import { bereiteGaeb2000, leseGaeb2000Lv } from './gaeb2000';
+import type { Gaeb2000Datei } from './gaeb2000';
 import { leseGaeb90Lv } from './gaeb90';
 import type { Gaeb90Datei } from './gaeb90';
 import { dekodiereBytes } from './kodierung';
@@ -1633,6 +1635,8 @@ export type Vorlauf =
       readonly befunde: readonly GaebBefund[];
       /** Gesetzt, wenn der Aufrufer GAEB 90 liest und die Datei GAEB 90 ist (Ticket 144): der dekodierte Text zum Weiterlesen. */
       readonly satzdatei?: Gaeb90Datei;
+      /** Ebenso für GAEB 2000 (Ticket 145). */
+      readonly schluesseldatei?: Gaeb2000Datei;
     }
   | {
       readonly bereit: true;
@@ -1657,7 +1661,7 @@ const dateibefund = (code: GaebBefundcode, a: Abweisung): GaebBefund => ({
 
 /**
  * Prüft Größe, dekodiert, erkennt die Dateiart am Inhalt (Ticket 136: GAEB 90, GAEB 2000 und Unbekanntes enden hier mit einem
- * Satz), parst ohne Entitäten mit Tiefengrenze, prüft das Wurzelelement und erkennt Version und Phase. Nicht gelesene
+ * Satz; mit `aeltereLesen` gibt er GAEB 90 und GAEB 2000 dekodiert zum Weiterlesen zurück, Ticket 144, 145), parst ohne Entitäten mit Tiefengrenze, prüft das Wurzelelement und erkennt Version und Phase. Nicht gelesene
  * Versionen (älter als 3.1) enden hier mit `version-nicht-unterstuetzt`. Die Phase prüft der Aufrufer (`phaseAbweisen`).
  */
 export function vorlauf(
@@ -1665,7 +1669,7 @@ export function vorlauf(
   opt: VorlaufOptionen,
   ids: IdQuelle | null,
   leserart: Leserart,
-  gaeb90Lesen = false,
+  aeltereLesen = false,
 ): Vorlauf {
   const befunde: GaebBefund[] = [];
   const fertig = (
@@ -1714,7 +1718,25 @@ export function vorlauf(
       typeof eingabe === 'string' ? null : eingabe,
       kodierung,
     );
-    if (art.format === 'gaeb-90' && gaeb90Lesen) {
+    if (art.format === 'gaeb-2000' && aeltereLesen)
+      return {
+        bereit: false,
+        phase: art.phase,
+        version: null,
+        format: 'gaeb-2000',
+        befunde,
+        schluesseldatei: bereiteGaeb2000(
+          inhalt,
+          typeof eingabe === 'string' ? null : eingabe,
+          art.kodierung,
+          {
+            phase: art.phase,
+            phasenquelle: art.phasenquelle,
+            endungsphase: phaseAusEndung(opt.dateiname),
+          },
+        ),
+      };
+    if (art.format === 'gaeb-90' && aeltereLesen) {
       const zeichensatz = typeof eingabe === 'string' ? null : (art.kodierung as Zeichensatz);
       return {
         bereit: false,
@@ -1789,6 +1811,10 @@ export function leseGaeb(eingabe: Uint8Array | string, opt: LeseOptionen): GaebL
   if (!v.bereit && v.satzdatei !== undefined) {
     const g = leseGaeb90Lv(v.satzdatei, opt);
     return { phase: g.phase, version: null, format: 'gaeb-90', inhalt: g.inhalt, befunde: g.befunde };
+  }
+  if (!v.bereit && v.schluesseldatei !== undefined) {
+    const g = leseGaeb2000Lv(v.schluesseldatei, opt);
+    return { phase: g.phase, version: null, format: 'gaeb-2000', inhalt: g.inhalt, befunde: g.befunde };
   }
   if (!v.bereit)
     return {

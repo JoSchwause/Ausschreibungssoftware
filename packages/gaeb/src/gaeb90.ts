@@ -32,7 +32,6 @@ import type {
   LvInhalt,
   OzMaske,
   OzStelle,
-  Position,
   Prozent,
   Zahlenart,
 } from '@tethys/vertrag';

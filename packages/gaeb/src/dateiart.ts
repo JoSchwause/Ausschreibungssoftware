@@ -4,7 +4,7 @@
 // genügt der Anfang der Datei (Wurzelelement, `GAEBInfo/Version`, `Award/DP`); dieselben Regeln wie der Leser
 // (`erkennung.ts`).
 //
-// Merkmale der beiden älteren Formate (eigene Worte, Lesart D-136.2; die Leser kommen später):
+// Merkmale der beiden älteren Formate (eigene Worte, Lesart D-136.2; Leser: `gaeb90.ts`, `gaeb2000.ts`):
 // - GAEB 90: Sätze fester Länge (80 Zeichen je Zeile), jeder beginnt mit der zweistelligen Satzart und endet mit der
 //   Satznummer; der erste Satz ist der Eröffnungssatz `00` oder `T0`. Die Phase (Datenart) steht im Satz `00` in den Stellen
 //   11 und 12, sonst gilt die Endung (`.d83` → X83). Berichtigt nach der Formatbeschreibung in Ticket 144 (D-144.1).
