@@ -6,9 +6,9 @@ import { KALENDERDATUM_MUSTER } from '@tethys/vertrag';
 import type { Ergebnis, Kalenderdatum, Wochentag } from '@tethys/vertrag';
 
 /**
- * Geprüfter Kalendertag als Text `JJJJ-MM-TT`, Jahr 0001 bis 9999 im proleptischen gregorianischen Kalender: Alias des
- * Vertragstyps `Kalenderdatum` (v1.7a). Nur {@link datumPruefen} und die Rechnung erzeugen ihn. Eingaben tragen Daten als
- * ungeprüften `string`; die Rechnung prüft sie selbst und meldet Ungültiges als Befund (U5).
+ * Früherer Name dieses Pakets für `Kalenderdatum` (Glossar „Kalenderdatum“, L1/L2: kein Synonym). Im Paket wird nur noch
+ * `Kalenderdatum` aus dem Vertrag benutzt (ein Test wacht darüber); der Name bleibt allein für die App stehen, bis sie
+ * umgestellt ist, dann entfällt er. Neuer Code benutzt `Kalenderdatum`.
  */
 export type Datum = Kalenderdatum;
 
@@ -44,10 +44,14 @@ export function tageImMonat(jahr: number, monat: number): number {
   return monat === 4 || monat === 6 || monat === 9 || monat === 11 ? 30 : 31;
 }
 
-/** Prüft Form und Existenz eines Kalendertags. Kein Leerraum, keine Zeitangabe. */
-export function datumPruefen(text: string): Ergebnis<Datum, Datumsfehler> {
+/**
+ * Prüft Form und Existenz eines Kalendertags `JJJJ-MM-TT` (kein Leerraum, keine Zeitangabe), Jahr 0001 bis 9999 im proleptischen gregorianischen Kalender. Nur diese
+ * Prüfung und die Rechnung erzeugen ein `Kalenderdatum`; Eingaben tragen Daten als ungeprüften `string`, die Rechnung prüft sie
+ * selbst und meldet Ungültiges als Befund (U5).
+ */
+export function datumPruefen(text: string): Ergebnis<Kalenderdatum, Datumsfehler> {
   const tag = tagnummerLesen(text);
-  if (tag.ok) return { ok: true, wert: text as Datum };
+  if (tag.ok) return { ok: true, wert: text as Kalenderdatum };
   return tag;
 }
 
@@ -100,9 +104,9 @@ export function zivilAusTagnummer(nummer: Tagnummer): Zivildatum {
 }
 
 /** Text `JJJJ-MM-TT` einer Tagnummer zwischen 0001-01-01 und 9999-12-31. */
-export function datumAusTagnummer(nummer: Tagnummer): Datum {
+export function datumAusTagnummer(nummer: Tagnummer): Kalenderdatum {
   const { jahr, monat, tag } = zivilAusTagnummer(nummer);
-  return `${String(jahr).padStart(4, '0')}-${String(monat).padStart(2, '0')}-${String(tag).padStart(2, '0')}` as Datum;
+  return `${String(jahr).padStart(4, '0')}-${String(monat).padStart(2, '0')}-${String(tag).padStart(2, '0')}` as Kalenderdatum;
 }
 
 /** ISO-Wochentag einer Tagnummer (1970-01-01 war ein Donnerstag). */

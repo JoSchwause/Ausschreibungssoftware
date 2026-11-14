@@ -8,10 +8,11 @@
 // Neujahr, Mi 06.01.2027 Heilige Drei Könige (Bayern). 30.12.2024 (Montag) gehört zu KW 1/2025 (Donnerstag 02.01.2025).
 
 import { describe, expect, it } from 'vitest';
-import type { Arbeitskalender, Datum } from './index';
+import type { Arbeitskalender } from './index';
+import type { Kalenderdatum } from '@tethys/vertrag';
 import { STANDARD_ARBEITSTAGE, balkenlage, datumPruefen, tagesindex, zeitachseBerechnen } from './index';
 
-function datum(text: string): Datum {
+function datum(text: string): Kalenderdatum {
   const e = datumPruefen(text);
   if (!e.ok) throw new Error(`Testdatum ungültig: ${text}`);
   return e.wert;
