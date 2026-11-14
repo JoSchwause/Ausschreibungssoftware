@@ -41,8 +41,11 @@ Tickets 123 und 124 aus Welle 6 gingen darin auf. **36 von 37 Tickets `resolved`
   Bauzeit, Honorar, Bauleitung) im gemeinsamen Seitengerüst, als „Vorschau“ gekennzeichnet (G-60).
 - **Abschlusslauf** auf dem Endstand (Code `103e4e9`, danach nur `.scratch/`; ruhige Maschine, Last unter 3 auf 4 Kernen):
   `pnpm lint` grün, `pnpm typecheck` grün, `pnpm test` **4.826 bestanden / 3 übersprungen** (406 Dateien, 1 übersprungen), alle
-  Leistungsbudgets grün, keines gelockert. E2E: E2E_ERGEBNIS. XSD-Gegenprüfung: XSD_ERGEBNIS.
-- **Tor E „Einführungsreife“ (`plan.md` §4): TOR_ERGEBNIS**
+  Leistungsbudgets grün, keines gelockert. E2E: `ui-grid` 109 bestanden / 3 übersprungen
+  (Bildschirmfotos), `ui-modell` 15/15, `speicher` 19/19, `web` **129/129**. XSD-Gegenprüfung 72/72, Pfadprobe mit Basis-Pfad
+  1/1, `reuse lint` konform.
+- **Tor E „Einführungsreife“ (`plan.md` §4): erreicht.** Die beiden Tor-E2E liefen auf dem Endstand dreimal
+  hintereinander grün (`--repeat-each 3`, zusammen mit `bim-tastatur.spec.ts`: 9/9), vorher dreimal in Ticket 158.
   1. `apps/web/e2e/umsteiger.spec.ts` (1280×800, nur Knöpfe, Links, Dateiauswahl und Tastatur, keine Testhaken, keine getippten
      Adressen): Beispielprojekt → neues Projekt aus der amtlichen BVBS-X83 (≥ 15 Zeilen mit EP und GP) → zwei X84 (die zweite
      ist die amtliche mit verdoppelten EP, D-158.1) → Preisspiegel-PDF → Zuschlag → Nachtrag geführt anlegen und beauftragen →
@@ -105,7 +108,8 @@ Tickets 123 und 124 aus Welle 6 gingen darin auf. **36 von 37 Tickets `resolved`
 - **In dieser Umgebung:** Downloads mit Umlaut im Namen kommen als „download“ an (Locale); die E2E prüfen den Namen im Dialog.
 - **Unter Parallellast** (bis 8 Agenten auf 4 Kernen) fielen CPU-Budgets (`kern`, `speicher` v16/aufmass, `vergabe`,
   `abrechnung/leistung`, `ausgabe` „druckt gross“); allein bzw. im Abschlusslauf auf ruhiger Maschine grün, nichts gelockert.
-  Der Wackler `bim-tastatur.spec.ts:135` (D-94, D-99): BIM_ERGEBNIS.
+  Der Wackler `bim-tastatur.spec.ts:135` (D-94, D-99) lief im Abschlusslauf und dreimal danach grün; eine
+  Ursache wurde nicht gefunden. Der Wackler `nachtrag.spec.ts:164` ist an der Ursache behoben (D-111).
 - **Nutzungslimit viermal** (D-81, D-85, D-91, D-105): Alle Agenten standen bis zum Ende des Fensters und liefen danach aus
   ihrem gespeicherten Stand weiter. Verloren ging nichts; der Überlauf führte zur Kürzung von M4 (D-108).
 - **Buchhaltung:** Der Merge-Commit `5fa34fd` ist der Merge von 158, trägt aber durch ein Versehen die Nachricht des
