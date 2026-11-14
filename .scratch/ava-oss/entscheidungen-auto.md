@@ -870,3 +870,10 @@ Question: Der Prüflauf (Lint, Typen, Unit, Web-E2E, `ui-grid`- und `speicher`-E
 Decision: (1) Sichtbar „OZ“, zugängliche Bezeichnung „Ordnungszahl“ (wie D-130 und im Sinn von D-133: Ordnungszahl ist der Fließtext-Begriff, ein Bildschirmleser liest ihn vor; U8). Behebt 156 als derzeitiger Schreiber in `ui-grid`. (2) Kleines Fix-Ticket 162 (Opus) für `apps/web/src/ausgabe/`, Ursache finden statt Test abschwächen. Budgets: zweite Messung im Abschlusslauf auf ruhiger Maschine; `bim-tastatur.spec.ts:58` wackelte einmal (wie :135, D-99).
 Reason: Q2 verlangt grüne E2E vor dem Tor; beide Fehler kommen aus dem Zusammenspiel zweier gemergter Tickets.
 Reversible: yes  Touches: packages/ui-grid, apps/web/src/ausgabe, Ticket 162
+
+## D-101 Suchen, Filtern, Kontextmenü gemergt; Spaltenkopf „Ordnungszahl (OZ)“
+Welle 7 · Ticket 156 (Folge 159) · decided by: orchestrator
+Question: 156 löst D-100 (1) mit der zugänglichen Bezeichnung „Ordnungszahl (OZ)“ statt nur „Ordnungszahl“ (der Sprachtest aus 133 verbietet „Ordnungszahl“ allein als Beschriftung); `ui-grid` bekommt `@radix-ui/react-dropdown-menu` (gleiche Version wie `ui-basis`) für das Kontextmenü.
+Decision: Beides bestätigt. „Ordnungszahl (OZ)“ nennt Begriff und Kürzel und hält D-130 (Bildschirmleser), D-133 (Sprachregel) und den Test. **Für 159:** `auftrag/AuftragsLvSeite` reicht `alleZeilen` und `onKuerzelhilfe` an das Grid (zwei Zeilen wie `LvStandSeite`), sonst sucht die Auftrags-LV-Seite nur in sichtbaren Zeilen.
+Reason: Keine Regel verletzt; Budgets der 5.000/10.000-Zeilen-Prüfstände blieben unter Last eingehalten.
+Reversible: yes  Touches: packages/ui-grid, apps/web/src/lv, Ticket 159
