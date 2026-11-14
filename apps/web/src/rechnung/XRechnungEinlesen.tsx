@@ -8,6 +8,7 @@ import { Button, Dialog, useToast } from '@tethys/ui-basis';
 import type { Betrag, Rechnung, RechnungId, Rechnungsart } from '@tethys/vertrag';
 import { useId, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { BefundeBeimEinlesen } from '../gaeb/BefundeBeimEinlesen';
 import { DateiNichtLesbar, dateiBytes, naechsterZug } from '../gaeb/datei';
 import { datumDe } from '../lv/kopfdaten';
 import { formatiereBetragDe } from '../lv/zahlen';
@@ -196,18 +197,8 @@ function Vorschau({
           <p className="lv-dialog__hinweis">{t.uebernimmt}</p>
         </>
       )}
-      <section aria-label={t.befunde}>
-        <h3 className="auftrag__unterkopf">{t.befunde}</h3>
-        {lage.lesung.befunde.length === 0 ? (
-          <p className="lv-dialog__hinweis">{t.keineBefunde}</p>
-        ) : (
-          <ul className="auftrag__warnungen">
-            {lage.lesung.befunde.map((b, i) => (
-              <li key={`${String(i)}-${b.code}`}>{b.meldung}</li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <h3 className="auftrag__unterkopf">{t.befunde}</h3>
+      <BefundeBeimEinlesen befunde={lage.lesung.befunde} kurztexte={t.kurztexte} beschriftung={t.befunde} />
       <footer className="tx-dialog__fuss">
         <Button onClick={onSchliessen}>{t.schliessen}</Button>
         {u === null ? null : (

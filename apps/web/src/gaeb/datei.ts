@@ -45,3 +45,16 @@ export function herunterladen(name: string, inhalt: string, typ: string): void {
     URL.revokeObjectURL(url);
   }, 1000);
 }
+
+/**
+ * Endungen, die der Dateidialog fürs GAEB-Einlesen anbietet (E7): alle Phasen 80 bis 89 als GAEB DA XML (`.x8*`), GAEB 90
+ * (`.d8*`) und GAEB 2000 (`.p8*`), dazu die Mengenermittlung (`.x31`) und `.xml`, je klein und groß. Der Leser erkennt die
+ * Dateiart am Inhalt; eine Datei, die er nicht liest, bekommt einen Satz, was sie ist und was stattdessen geht.
+ */
+export const GAEB_ENDUNGEN: string = [
+  ...['x', 'd', 'p'].flatMap((art) => Array.from({ length: 10 }, (_, i) => `.${art}8${String(i)}`)),
+  '.x31',
+  '.xml',
+]
+  .flatMap((e) => [e, e.toUpperCase()])
+  .join(',');
