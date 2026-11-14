@@ -231,7 +231,25 @@ test('Nachtrag: anlegen, Angebot des Auftragnehmers, beauftragen, Rückgängig/W
     },
   };
   await expect(band.getByRole('button', { name: 'Angebot des Auftragnehmers einlesen' })).toBeVisible();
-  await band.getByLabel('Angebotsdatei des Auftragnehmers wählen').setInputFiles({
+  // Wellen-Review PB1 (E7): Der Dateidialog bietet alle GAEB-Endungen und Excel an; Befunde stehen zusammengefasst im
+  // gemeinsamen Baustein, eine Datei ohne GAEB-Inhalt bekommt den Satz der Abweisung statt einer Rohzeile.
+  const angebotsdatei = band.getByLabel('Angebotsdatei des Auftragnehmers wählen');
+  for (const endung of ['.x84', '.d84', '.p84', '.xlsx'])
+    await expect(angebotsdatei).toHaveAttribute('accept', new RegExp(`(^|,)\\${endung}(,|$)`));
+  await angebotsdatei.setInputFiles({
+    name: 'kaputt.x84',
+    mimeType: 'application/xml',
+    buffer: Buffer.from('das ist kein Angebot'),
+  });
+  const kaputt = page.getByRole('dialog', { name: 'Angebot des Auftragnehmers einlesen' });
+  const befunde = kaputt.getByRole('region', { name: 'Befunde der Datei' });
+  await expect(befunde.getByTestId('abweisung')).toContainText('Die Datei ist keine GAEB-Datei');
+  await expect(befunde.getByTestId('befundzahl')).toBeVisible();
+  await expect(kaputt).not.toContainText('(Zeile');
+  await expect(kaputt.getByRole('button', { name: 'Übernehmen' })).toHaveCount(0);
+  await kaputt.getByRole('button', { name: 'Schließen', exact: true }).last().click();
+  await expect(kaputt).toBeHidden();
+  await angebotsdatei.setInputFiles({
     name: 'Nachtragsangebot.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     buffer: Buffer.from(lvAlsExcel(mitPreisen, { mitPreisen: true }).bytes),

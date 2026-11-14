@@ -19,8 +19,8 @@ const ANNAHMEN: readonly Annahmenabschnitt[] = [
     titel: 'Preisspiegel',
     saetze: [
       'Min, Mittel und Max je Position bilden nur Bieter mit einem Einheitspreis über 0,00. Ein Preis von 0,00 und „nicht angeboten“ bekommen je ein eigenes Kennzeichen und gelten nie als Ausreißer; ein negativer Preis zählt dort ebenfalls nicht.',
-      'Ein Ausreißer weicht um mehr als 20 % vom Mittel ab; die Schwelle lässt sich einstellen. Haben weniger als zwei Bieter einen Preis über 0,00, wird nichts markiert.',
-      'ABC-Klassen: Die Positionen werden absteigend nach Gesamtpreis sortiert. Bis 80 % der Summe gehören zur Klasse A, bis 95 % zur Klasse B, der Rest zur Klasse C; die Position, mit der die Summe eine Schwelle überschreitet, zählt noch zur Klasse davor. Bezug ist das Mittel der Bieter.',
+      'Ausreißer vergleichen den Einheitspreis (EP), nicht den Gesamtpreis: Ein Ausreißer weicht um mehr als 20 % vom Mittel der Einheitspreise ab; die Schwelle lässt sich einstellen. Haben weniger als zwei Bieter einen Preis über 0,00, wird nichts markiert. Bei einer Zuschlagsposition werden die Beträge verglichen.',
+      'ABC-Klassen: Die Positionen werden absteigend nach Gesamtpreis sortiert. Bis 80 % der Summe gehören zur Klasse A, bis 95 % zur Klasse B, der Rest zur Klasse C; die Position, mit der die Summe eine Schwelle überschreitet, zählt noch zur Klasse davor. Bezug der ABC-Klasse ist das Mittel der Bieter; in den Einstellungen des Preisspiegels lässt er sich auf den Schätzpreis umschalten.',
       'Jedes Angebot hat höchstens einen Nachlass, prozentual oder als Betrag, auf das ganze Angebot; den Nachlass des LV erbt es nicht. Der Rang folgt dem Netto nach Nachlass; gleiche Beträge haben gleichen Rang.',
     ],
   },
@@ -54,6 +54,7 @@ const ANNAHMEN: readonly Annahmenabschnitt[] = [
     saetze: [
       'Abschlagsrechnungen sind kumuliert: Jede Rechnung rechnet alle Aufmaßblätter bis dahin ab und zieht die Zahlbeträge der früheren Rechnungen ab. Jeder Schritt der Abzugskette wird auf 2 Nachkommastellen gerundet, in dieser Reihenfolge:',
       'Mit der Freigabe wird der Zahlbetrag eingefroren: Spätere Rechnungen ziehen ihn ab, auch wenn sich danach ein Aufmaß ändert. Freigegeben wird der Reihe nach.',
+      'Die Vertragsstrafe wird wie die Leistung kumuliert eingetragen: An jeder Rechnung steht die Summe aller Vertragsstrafen bis dahin, nicht nur die neue. Eine neue Rechnung bekommt die Vertragsstrafe der vorigen Rechnung vorgeschlagen; kommt eine Strafe hinzu, wird sie zu diesem Betrag addiert. Wer nur die neue Strafe einträgt, zieht zu wenig ab: Die früheren Strafen würden mit dieser Rechnung wieder ausgezahlt.',
       'Skonto: Satz und Frist in Kalendertagen stehen an der Rechnung. Die Frist beginnt mit dem Eingang der Rechnung; der Eingangstag zählt nicht mit, ein Wochenende verschiebt das Fristende nicht. Ohne Eingangsdatum gibt es kein Skonto.',
       'Skonto gilt, wenn bis zum Fristende mindestens die Auszahlung im Skontofall gezahlt ist. Die Prüfung zeigt beide Fälle: bei Zahlung in der Frist und danach.',
       'Bauabzugsteuer nach § 48 EStG: an der Rechnung einzuschalten, sonst aus. Die App rechnet 15 % auf den Zahlbetrag nach Skonto, weist den Betrag als „an das Finanzamt“ aus und mindert damit nur die Auszahlung.',
@@ -67,7 +68,7 @@ const ANNAHMEN: readonly Annahmenabschnitt[] = [
       'MwSt auf das Netto nach Nachlass',
       'Brutto kumuliert',
       'Umlagen: jede mit ihrem Satz auf das Brutto kumuliert, nicht aufeinander gerechnet',
-      'Vertragsstrafe: ein fester Betrag mit Grund, ohne Wirkung auf die MwSt',
+      'Vertragsstrafe: ein fester Bruttobetrag mit Grund, kumuliert bis zu dieser Rechnung, ohne Wirkung auf die MwSt',
       'Einbehalt: Sicherheit in Abschlagsrechnungen, Gewährleistung in der Schlussrechnung, auf das Brutto kumuliert',
       'Frühere Zahlbeträge: die eingefrorenen Zahlbeträge der früheren Rechnungen',
       'Zahlbetrag: was die Rechnung jetzt fordern darf',
@@ -276,11 +277,6 @@ export const texte = {
     gaeb: {
       titel: 'Mit einer GAEB-Datei beginnen',
       text: 'Ein Leistungsverzeichnis als GAEB-Datei einlesen, etwa X81 oder X83. Dafür legt die App ein neues Projekt an.',
-      knopf: 'GAEB-Datei einlesen …',
-      projektname: 'Neues Projekt',
-      angelegt: (name: string): string =>
-        `Projekt „${name}“ angelegt. Jetzt die GAEB-Datei wählen; den Namen ändert „Projektangaben“ auf der Projektseite.`,
-      zumProjekt: 'Zum Projekt',
     },
     leer: {
       titel: 'Leeres Projekt anlegen',
