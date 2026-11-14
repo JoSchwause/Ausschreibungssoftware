@@ -927,3 +927,10 @@ Question: 157 (weitere REB-Formeln, Priorität K) darf erst nach allen P-/S-Tick
 Decision: Gekürzt, als erster Punkt der Kürzungsreihenfolge (`umfang-welle-7.md` §4: „M4 → …“). Das Ticket bleibt `ready-for-agent` mit Vermerk und geht in die nächste Welle; die vorhandene Formelauswahl und der X31-Rundweg (Nummer bleibt erhalten, Befund „Formel nicht umgesetzt“) bleiben unverändert.
 Reason: Die Welle ist übergelaufen: vier Halte am Nutzungslimit (D-81, D-85, D-91, D-105), das Tor ist noch nicht dreimal grün, die Leistungsbudgets müssen noch auf ruhiger Maschine gemessen werden, und 157 würde `packages/gaeb` zugleich mit 159a schreiben (P2). Das verbleibende Budget gehört dem Tor, der Review-Behebung und dem Abschluss. Kein P- oder S-Teil wird gekürzt.
 Reversible: yes (Ticket unverändert startbereit)  Touches: Ticket 157, Bericht
+
+## D-109 Befunde des zweiten Review-Durchgangs
+Welle 7 · Ticket 152, 161, 162, 159 · decided by: orchestrator
+Question: Der zweite Durchgang (`review-welle-7.md`, Abschnitt „Zweiter Durchgang“) fand R1–R11. Was wird behoben, und bestätigt er D-161.2?
+Decision: D-161.2 bestätigt (Protokoll ist Nebenbuch nach ADR 0009). An 159b: R1, R2 (Bildschirm), R3, R4, R5, R7. An 159a: R6 samt Folge in ADR 0009, und dieselbe Wortwahl für PA2 im PDF („Skonto (noch nicht verwirklicht)“ während der Frist, „nicht verwirklicht“ danach), damit Bildschirm und PDF gleich sprechen. In den Bericht: R8 (Doppelung, nur Drift-Risiko, durch Tests gedeckt), R9 (Leistung bei großen Modellen, nur beim Öffnen des Dialogs), R10, R11.
+Reason: Wie D-104: Pflicht ist, was Nutzer falsch informiert oder eine Regel verletzt (R1 E13/L5, R2 falsche Angabe); billige Soll-Punkte nimmt der zuständige Schreiber mit.
+Reversible: yes  Touches: abrechnung/, rechnung/, historie/, speicher, ADR 0009, Ticket 159
