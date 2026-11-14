@@ -104,13 +104,18 @@ test('Projektdatei sichern und in einem frischen Speicher einlesen: gleiche Summ
   await neu.getByRole('link', { name: 'Zaun' }).click();
   await expect.poll(() => summen(neu)).toEqual(vorher);
 
-  // Ein zweiter Import desselben Projekts: Meldung statt stiller Überschreibung.
+  // Ein zweiter Import desselben Projekts: Frage nach einer Kopie statt stiller Überschreibung (Ticket 150);
+  // „Abbrechen“ lässt alles, wie es ist.
   await neu.goto('/');
   await neu.getByLabel('Projektdatei einlesen').setInputFiles({
     name: 'Exportprojekt.tethys.json',
     mimeType: 'application/json',
     buffer: Buffer.from(inhalt),
   });
-  await expect(neu.getByText('Dieses Projekt ist schon vorhanden.', { exact: true })).toBeVisible();
+  const frage = neu.getByRole('dialog', { name: 'Projekt schon vorhanden' });
+  await expect(frage).toContainText('Das Projekt „Exportprojekt“ ist schon vorhanden.');
+  await frage.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(frage).toBeHidden();
+  await expect(neu.getByRole('list', { name: 'Projekte' }).getByRole('link')).toHaveText(['Exportprojekt']);
   await kontext.close();
 });
