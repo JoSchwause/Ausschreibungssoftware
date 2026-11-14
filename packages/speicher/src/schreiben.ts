@@ -327,6 +327,41 @@ function loescheProjekt(db: Datenbank, cs: ProjektChangeSet, abhaengige: readonl
   db.ausfuehren('DELETE FROM projekt WHERE id = ?', [id]);
 }
 
+/**
+ * Löscht ein Projekt samt Inhalt (Vertrag v1.7c, D-160.5; in der Transaktion des Aufrufers): jede Zeile, die dem Projekt gehört,
+ * in der Reihenfolge der Verweise (Verweisende zuerst), das Protokoll eingeschlossen. Geprüft hat der Aufrufer (`projektbestand.ts`).
+ * Einstellungen, ihr Protokoll und die Modell-Bytes bleiben; die Bytes gibt erst das nächste Öffnen frei (D-160.7).
+ */
+export function loescheProjektMitInhalt(db: Datenbank, id: ProjektId): void {
+  const vonProjekt = (tabelle: string): string => `SELECT id FROM ${tabelle} WHERE projekt_id = ?1`;
+  const aggregate = ['leistungsverzeichnis', 'angebot', 'auftrags_lv'].map(vonProjekt).join(' UNION ALL ');
+  for (const sql of [
+    'DELETE FROM protokoll WHERE projekt_id = ?1',
+    'DELETE FROM mangel WHERE projekt_id = ?1',
+    'DELETE FROM bautagebucheintrag WHERE projekt_id = ?1',
+    'DELETE FROM honorarberechnung WHERE projekt_id = ?1',
+    'DELETE FROM bauzeitenplan WHERE projekt_id = ?1',
+    'DELETE FROM rechnung WHERE projekt_id = ?1',
+    'DELETE FROM aufmass WHERE projekt_id = ?1',
+    `DELETE FROM bauwerksmodell_inhalt WHERE bauwerksmodell_id IN (${vonProjekt('bauwerksmodell')})`,
+    'DELETE FROM bauwerksmodell WHERE projekt_id = ?1',
+    'DELETE FROM kostenermittlung WHERE projekt_id = ?1',
+    `DELETE FROM knoten WHERE aggregat_id IN (${aggregate})`,
+    `DELETE FROM summe_position WHERE aggregat_id IN (${aggregate})`,
+    `DELETE FROM summe_gliederung WHERE aggregat_id IN (${aggregate})`,
+    `DELETE FROM summe_gesamt WHERE aggregat_id IN (${aggregate})`,
+    'DELETE FROM auftrags_lv WHERE projekt_id = ?1',
+    `DELETE FROM angebotsposition WHERE angebot_id IN (${vonProjekt('angebot')})`,
+    'DELETE FROM angebot WHERE projekt_id = ?1',
+    `DELETE FROM lv_stand WHERE leistungsverzeichnis_id IN (${vonProjekt('leistungsverzeichnis')})`,
+    `DELETE FROM papierkorb_eintrag WHERE leistungsverzeichnis_id IN (${vonProjekt('leistungsverzeichnis')})`,
+    'DELETE FROM leistungsverzeichnis WHERE projekt_id = ?1',
+    'DELETE FROM bieter WHERE projekt_id = ?1',
+    'DELETE FROM projekt WHERE id = ?1',
+  ])
+    db.ausfuehren(sql, [id]);
+}
+
 // --- Knoten und Summen (LV und Auftrags-LV) --------------------------------------------------------------------
 
 const KNOTEN_EINFUEGEN = `INSERT INTO knoten (${KNOTEN_SPALTEN.join(', ')}) VALUES (${KNOTEN_SPALTEN.map(() => '?').join(', ')})`;

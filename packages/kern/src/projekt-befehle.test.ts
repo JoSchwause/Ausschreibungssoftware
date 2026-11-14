@@ -189,7 +189,11 @@ describe('ProjektSamtInhaltLoeschen', () => {
     ['ohne protokoll', { leistungsverzeichnisse: [], angebote: [], auftragsLeistungsverzeichnisse: [] }],
     ['angebote keine Liste', { ...leererBestand, angebote: {} }],
   ])('Bestand %s: ungueltige-eingabe am Feld bestand', (_, bestand) => {
-    const e = projektSamtInhaltLoeschenAusfuehren(projekt(), samtInhalt, bestand as unknown as Projektbestand);
+    const e = projektSamtInhaltLoeschenAusfuehren(
+      projekt(),
+      samtInhalt,
+      bestand as unknown as Projektbestand,
+    );
     expect(e.ok ? null : { code: e.fehler.code, feld: e.fehler.feld }).toEqual({
       code: 'ungueltige-eingabe',
       feld: 'bestand',

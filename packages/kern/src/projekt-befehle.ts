@@ -170,7 +170,12 @@ export function projektChangeSetUmkehren(cs: ProjektChangeSet): ProjektChangeSet
 // --- Vertrag v1.7c (Ticket 161; E8, D-96, D-160.4): Projekt samt Inhalt löschen ---------------------------------------------
 
 /** Die Listen, die jeder `Projektbestand` trägt (in der Projektdatei Pflicht); alle übrigen fehlen, wenn sie leer sind. */
-const PFLICHTLISTEN = ['leistungsverzeichnisse', 'angebote', 'auftragsLeistungsverzeichnisse', 'protokoll'] as const;
+const PFLICHTLISTEN = [
+  'leistungsverzeichnisse',
+  'angebote',
+  'auftragsLeistungsverzeichnisse',
+  'protokoll',
+] as const;
 
 /**
  * Führt `ProjektSamtInhaltLoeschen` aus: `projekt` und `bestand` je `{ vorher, nachher: null }`. Der Kern prüft nur die Form des

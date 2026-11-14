@@ -22,26 +22,6 @@ export function einstellungenFormfehler(e: Einstellungen): string | null {
 }
 
 /**
- * Die Einstellungen nach der Übernahme des Blocks `datei` einer Projektdatei, nach der Regel von `EinstellungenUebernehmen`
- * (D-73, D-127.9): Das Büro nur, wenn lokal keines gesetzt ist; ein Druckprofil nur, wenn lokal keines dieses Namens besteht (es
- * kommt in der Reihenfolge der Datei ans Ende); eine Kostengruppenbezeichnung nur, wenn lokal keine dieser Nummer besteht (die
- * Liste bleibt nach Nummer geordnet). Nie wird etwas überschrieben.
- *
- * Ausführer dieses Befehls ist der Kern (Ticket 137, `einstellungenBefehlAusfuehren`); bis er gemergt ist, rechnet `speicher`
- * nach derselben Regel (D-127.9 erlaubt beides). Danach ersetzt der Aufruf des Kerns diese Funktion in
- * `uebernimmEinstellungenDerDatei` (eine Zeile); der Bericht folgt ohnehin aus dem ChangeSet (`einstellungsbericht`).
- */
-export function einstellungenUebernehmen(lokal: Einstellungen, datei: Einstellungen): Einstellungen {
-  const druckprofile = [...lokal.druckprofile];
-  for (const p of datei.druckprofile) if (!druckprofile.some((q) => q.name === p.name)) druckprofile.push(p);
-  const kostengruppenbezeichnungen = [...lokal.kostengruppenbezeichnungen];
-  for (const k of datei.kostengruppenbezeichnungen)
-    if (!kostengruppenbezeichnungen.some((q) => q.nummer === k.nummer)) kostengruppenbezeichnungen.push(k);
-  kostengruppenbezeichnungen.sort((a, b) => (a.nummer < b.nummer ? -1 : a.nummer > b.nummer ? 1 : 0));
-  return { buero: lokal.buero ?? datei.buero, druckprofile, kostengruppenbezeichnungen };
-}
-
-/**
  * Was aus dem Block `datei` wurde, abgelesen am ChangeSet der Übernahme (D-127.9, `ProjektdateiEinleseergebnis`): je Schlüssel
  * der Datei „belassen“, wenn es ihn vorher lokal schon gab (auch mit gleichem Wert), sonst „übernommen“, wenn er nachher da ist.
  * Beide Listen in der Reihenfolge der Datei: Büro, Druckprofile, Kostengruppenbezeichnungen.
