@@ -166,9 +166,9 @@ export const texte = {
     'nachlass-ohne-basis': 'Der absolute Nachlass hat keine Basis (Auftrags-LV netto 0,00); er zählt 0,00.',
     'netto-nach-nachlass-negativ': 'Das Netto nach Nachlass ist negativ.',
     'skonto-ohne-eingang':
-      'Skonto vereinbart, aber kein Eingangsdatum: ohne Fristende gibt es keinen Skonto.',
+      'Skonto vereinbart, aber kein Eingangsdatum: Ohne Skontofrist gibt es keinen Skonto. Das Eingangsdatum lässt sich unter „Angaben bearbeiten“ nachtragen.',
     'zahlungen-ueber-auszahlung': (offen: string) =>
-      `Gezahlt wurde mehr als die Auszahlung (offen ${offen} €).`,
+      `Gezahlt wurde mehr als die Auszahlung an den Auftragnehmer (offen ${offen} €). Bitte die Zahlungen prüfen.`,
   },
   freigabe: {
     knopf: 'Freigeben',

@@ -21,6 +21,7 @@ import type {
   Rechnung,
   RechnungBefehl,
   TitelId,
+  Zahlungsbefund,
   Zahlungsstand,
 } from '@tethys/vertrag';
 
@@ -201,6 +202,7 @@ interface FxZahlungsset {
     readonly name: string;
     readonly rechnung: Rechnung;
     readonly zahlungsstand: Zahlungsstand;
+    readonly befunde: readonly Zahlungsbefund[];
   }[];
 }
 

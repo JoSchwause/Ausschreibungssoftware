@@ -18,7 +18,7 @@ import {
   m4Nachtragsknoten,
 } from '../../e2e/rechnung-fixture';
 import { entwurfLesen, neuerEntwurf, rechnungAnlegenBefehl, type Rechnungsentwurf } from './entwurf';
-import { freigabelage, kettenzeilen, pruefen, zahlungsfreigabe } from './pruefung';
+import { befundtext, freigabelage, kettenzeilen, pruefen, zahlungsfreigabe } from './pruefung';
 import { rechnungenSitzung, rechnungsstandLaden, type RechnungenSitzung } from './rechnungen';
 import { mitAuftrag, type Auftragsstand } from './testhilfen';
 import { aufmassBefehlSchreiben, aufmassSchreiben, nachtragSchreiben } from './testpfad';
@@ -229,6 +229,24 @@ describe('zahlungsfreigabe: Varianten der Fixture', () => {
       ['auszahlung', '7543.24'],
       ['summeZahlungen', '7316.94'],
       ['offen', '226.30'],
+    ]);
+  });
+});
+
+describe('Befunde des Zahlungsstands als Text (U5, D-97)', () => {
+  const bezug = { oz: (id: string) => id, blatt: (id: string) => id };
+  const texte = (name: string): string[] =>
+    (A5_VARIANTEN.find((v) => v.name === name)?.befunde ?? []).map((b) => befundtext(b, bezug));
+
+  it('Überzahlung nennt den negativen offenen Betrag und den nächsten Schritt', () => {
+    expect(texte('ar1-ueberzahlung')).toEqual([
+      'Gezahlt wurde mehr als die Auszahlung an den Auftragnehmer (offen -50,00 €). Bitte die Zahlungen prüfen.',
+    ]);
+  });
+
+  it('Skonto ohne Eingangsdatum sagt, wo das Datum nachzutragen ist', () => {
+    expect(texte('ar2-ohne-eingang')).toEqual([
+      'Skonto vereinbart, aber kein Eingangsdatum: Ohne Skontofrist gibt es keinen Skonto. Das Eingangsdatum lässt sich unter „Angaben bearbeiten“ nachtragen.',
     ]);
   });
 });
