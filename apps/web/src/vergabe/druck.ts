@@ -8,7 +8,8 @@ import type { Preisspiegel } from '@tethys/vergabe';
 import type { BieterId, Buero, LvZustand, Projekt } from '@tethys/vertrag';
 import { dateinameSauber } from '../dateiname';
 import type { Spaltenwahl } from './ansicht';
-import type { Druckantwort, Druckauftrag } from './druck-worker';
+import { pdfLauf, type PdfLauf } from '../ui/pdf-lauf';
+import type { Druckauftrag } from './druck-worker';
 
 export interface Druckstand {
   readonly lv: LvZustand;
@@ -57,34 +58,7 @@ export const dateinamePreisspiegelPdf = (lv: LvZustand): string => `${name('Prei
 export const dateinamePreisspiegelExcel = (lv: LvZustand): string => `${name('Preisspiegel', lv)}.xlsx`;
 export const dateinameVergabevorschlag = (lv: LvZustand): string => `${name('Vergabevorschlag', lv)}.pdf`;
 
-export interface Drucklauf {
-  /** Die Bytes des PDF; `null`, wenn der Lauf abgebrochen wurde. Ein Fehler des Erzeugers wird zur Ablehnung. */
-  readonly ergebnis: Promise<Uint8Array | null>;
-  abbrechen: () => void;
-}
-
-/** Ein PDF im Worker; der Worker wird je Lauf angelegt und danach beendet. */
-export function pdfImWorker(auftrag: Druckauftrag): Drucklauf {
-  const worker = new Worker(new URL('./druck-worker.ts', import.meta.url), { type: 'module' });
-  let fertig: (b: Uint8Array | null) => void = () => undefined;
-  const ergebnis = new Promise<Uint8Array | null>((ok, fehler) => {
-    fertig = ok;
-    worker.onmessage = (e: MessageEvent<Druckantwort>) => {
-      worker.terminate();
-      if (e.data.art === 'fertig') ok(e.data.bytes);
-      else fehler(new Error(e.data.meldung));
-    };
-    worker.onerror = (e) => {
-      worker.terminate();
-      fehler(new Error(e.message || 'Der Druck-Worker ist abgestürzt.'));
-    };
-  });
-  worker.postMessage(auftrag);
-  return {
-    ergebnis,
-    abbrechen: () => {
-      worker.terminate();
-      fertig(null);
-    },
-  };
+/** Ein PDF im Worker über den gemeinsamen Worker-Start (`ui/pdf-lauf.ts`); abbrechbar. */
+export function pdfImWorker(auftrag: Druckauftrag): PdfLauf {
+  return pdfLauf(new Worker(new URL('./druck-worker.ts', import.meta.url), { type: 'module' }), auftrag);
 }

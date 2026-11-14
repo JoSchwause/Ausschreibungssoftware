@@ -171,8 +171,3 @@ a.tx-button {
   color: var(--tx-color-text-muted);
 }
 
-.vergabe__vorschau {
-  width: 100%;
-  height: 60vh;
-  border: 1px solid var(--tx-color-border);
-}

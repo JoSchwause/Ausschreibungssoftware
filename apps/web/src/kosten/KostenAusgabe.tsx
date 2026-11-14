@@ -2,7 +2,8 @@
 // „Ausgabe“ der Kostenseiten (Ticket 154, E12): „Als PDF“ und „Als Excel“ öffnen denselben Dialog mit der Vorschau des
 // Berichts; heruntergeladen wird erst auf Wunsch. Die gewählte Art ist die Hauptschaltfläche. Das Projekt lädt der Dialog
 // beim Öffnen, das Büro (Absender, D-141) kommt aus den Einstellungen (Ticket 150), das Datum von der Uhr der App (A2); den
-// Bericht baut die Seite aus ihrem Stand (`bericht`). Steht in einer `Werkzeuggruppe`: Die Schaltflächen werden dort zu Menüpunkten.
+// Bericht baut die Seite aus ihrem Stand (`bericht`). Das PDF entsteht im Worker (`druck.ts`); Fehler erscheinen als Satz mit
+// dem nächsten Schritt, nie als technischer Text. Steht in einer `Werkzeuggruppe`: Die Schaltflächen werden dort zu Menüpunkten.
 
 import type { Berichtsmodell } from '@tethys/ausgabe';
 import { Button, Dialog, useToast } from '@tethys/ui-basis';
@@ -11,6 +12,7 @@ import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { herunterladenBytes } from '../ausgabe/datei';
 import { datumAusUhr } from '../ausgabe/logik';
+import { texte as fehlerTexte } from '../fehler/texte';
 import { useEinstellungen } from '../historie/EinstellungenAnbieter';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { BerichtVorschau } from './BerichtVorschau';
@@ -28,7 +30,7 @@ type Lage =
   | { readonly art: 'zu' }
   | { readonly art: 'laedt' }
   | { readonly art: 'da'; readonly bericht: Kostenbericht; readonly modell: Berichtsmodell }
-  | { readonly art: 'fehler'; readonly meldung: string };
+  | { readonly art: 'fehler' };
 
 export function KostenAusgabe({
   projektId,
@@ -67,8 +69,9 @@ export function KostenAusgabe({
           bezeichnungen,
         });
         return { art: 'da', bericht: b, modell: await berichtModell(b) };
-      } catch (f) {
-        return { art: 'fehler', meldung: f instanceof Error ? f.message : String(f) };
+      } catch {
+        // Wellen-Review SB1/PB3 (B-26): ein Satz mit dem nächsten Schritt, nie der technische Text.
+        return { art: 'fehler' };
       }
     })().then((l) => {
       if (lauf.current === nr) setLage(l);
@@ -89,8 +92,8 @@ export function KostenAusgabe({
       const name = dateiname(endung);
       herunterladenBytes(name, bytes, TYP[endung]);
       zeige({ titel: t.fertig, beschreibung: name, art: 'erfolg' });
-    } catch (f) {
-      zeige({ titel: t.fehler, beschreibung: f instanceof Error ? f.message : String(f), art: 'fehler' });
+    } catch {
+      zeige({ titel: t.fehler, beschreibung: fehlerTexte.pdf, art: 'fehler' });
     } finally {
       setLaeuft(false);
     }
@@ -163,7 +166,7 @@ export function KostenAusgabe({
         ) : null}
         {lage.art === 'fehler' ? (
           <p role="alert">
-            <strong>{t.fehler}</strong> {lage.meldung}
+            <strong>{t.fehler}</strong> {t.vorschauFehler}
           </p>
         ) : null}
         {lage.art === 'da' ? <BerichtVorschau modell={lage.modell} /> : null}

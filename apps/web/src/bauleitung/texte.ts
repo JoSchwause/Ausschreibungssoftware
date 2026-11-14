@@ -148,7 +148,7 @@ export const texte = {
     abbrechen: 'Abbrechen',
     laeuft: 'PDF wird erzeugt …',
     fertig: 'PDF erzeugt',
-    fehler: 'Das PDF konnte nicht erzeugt werden:',
+    fehler: 'Das PDF konnte nicht erzeugt werden.',
     filterKopf: (status: string, auftragnehmer: string): string =>
       `Status: ${status}; Auftragnehmer: ${auftragnehmer}`,
     ungefiltert: 'Alle Mängel',

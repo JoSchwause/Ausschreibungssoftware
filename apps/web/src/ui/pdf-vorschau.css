@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Dialog „PDF mit Vorschau“ (`PdfMitVorschau.tsx`): Eingaben untereinander, Fehlerzeile, das PDF im Dialog. */
+
+.pdf-vorschau__formular {
+  display: grid;
+  gap: var(--tx-space-2);
+}
+
+.pdf-vorschau__fehler {
+  margin: var(--tx-space-3) 0;
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border: 1px solid var(--tx-color-warning);
+  background: var(--tx-color-warning-subtle);
+  font-weight: var(--tx-weight-medium);
+}
+
+.pdf-vorschau__bild {
+  width: 100%;
+  height: 60vh;
+  border: 1px solid var(--tx-color-border);
+}

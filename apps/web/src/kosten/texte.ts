@@ -170,6 +170,8 @@ export const texte = {
     laeuft: 'Datei wird erstellt …',
     fertig: 'Datei erstellt',
     fehler: 'Die Ausgabe ließ sich nicht erstellen.',
+    /** Nächster Schritt, wenn die Vorschau nicht entsteht (Wellen-Review SB1, E13). */
+    vorschauFehler: 'Bitte den Dialog schließen und erneut öffnen. Hilft das nicht, die Seite neu laden.',
   },
   bezeichnungen: {
     fehlen:
