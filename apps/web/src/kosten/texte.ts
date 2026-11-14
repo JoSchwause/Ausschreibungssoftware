@@ -65,7 +65,7 @@ export const texte = {
     zurueck: 'Zur Liste',
     csvTitel: 'Bezeichnungen der Kostengruppen',
     csvHinweis:
-      'Die Bezeichnungen sind selbst mitzubringen (CSV: Nummer; Bezeichnung). Sie werden nur auf diesem Gerät als Einstellung gemerkt und stehen nie in der Projektdatei.',
+      'Die Bezeichnungen sind selbst mitzubringen (CSV: Nummer; Bezeichnung). Sie werden als Einstellung gemerkt und gelten für alle Projekte.',
     csvWaehlen: 'CSV mit Bezeichnungen wählen',
     csvEntfernen: 'Bezeichnungen entfernen',
     csvGelesen: (n: number) => `${stueck(n, '1 Bezeichnung', 'Bezeichnungen')} gelesen`,
