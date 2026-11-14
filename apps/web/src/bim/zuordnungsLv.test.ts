@@ -9,7 +9,7 @@ import type {
   LvUebersicht,
 } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { bezugswahlenBauen } from './useBezug';
+import { zuordnungsLvWahlen } from './zuordnungsLv';
 
 const lv = (id: string, name: string, vorlage = false): LvUebersicht => ({
   id: id as LeistungsverzeichnisId,
@@ -21,7 +21,7 @@ const auftrag = (id: string, name: string): AuftragsLvUebersicht =>
 
 describe('Wahl des LV für die Zuordnung', () => {
   it('nennt Ausschreibungs-LVs und Auftrags-LVs, aber keine Muster-LVs; ein Muster-LV wird nie vorgewählt', () => {
-    const w = bezugswahlenBauen(
+    const w = zuordnungsLvWahlen(
       [lv('m', 'Muster Rohbau', true), lv('a', 'Rohbau')],
       [auftrag('x', 'Rohbau A')],
     );
@@ -30,6 +30,6 @@ describe('Wahl des LV für die Zuordnung', () => {
   });
 
   it('nur Muster-LVs: keine Wahl', () => {
-    expect(bezugswahlenBauen([lv('m', 'Muster', true)], [])).toEqual([]);
+    expect(zuordnungsLvWahlen([lv('m', 'Muster', true)], [])).toEqual([]);
   });
 });

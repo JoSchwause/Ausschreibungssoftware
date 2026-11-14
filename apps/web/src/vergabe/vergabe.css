@@ -128,3 +128,44 @@ a.tx-button {
 .preisspiegel__bieter th[scope='row'] {
   white-space: nowrap;
 }
+
+/* Ticket 149: Bieter verwalten, Zuschlag zurücknehmen, Ausgaben mit Vorschau. */
+.vergabe__formular {
+  display: grid;
+  gap: var(--tx-space-2);
+}
+
+.vergabe__bieter td,
+.vergabe__bieter th {
+  text-align: left;
+}
+
+.vergabe__aktionen {
+  display: flex;
+  gap: var(--tx-space-1);
+  justify-content: flex-end;
+}
+
+.vergabe__begruendung {
+  display: grid;
+  gap: var(--tx-space-1);
+}
+
+.vergabe__begruendung textarea {
+  font: inherit;
+  padding: var(--tx-space-1) var(--tx-space-2);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-md);
+  background: var(--tx-color-surface);
+  color: inherit;
+}
+
+.vergabe__begruendung small {
+  color: var(--tx-color-text-muted);
+}
+
+.vergabe__vorschau {
+  width: 100%;
+  height: 60vh;
+  border: 1px solid var(--tx-color-border);
+}

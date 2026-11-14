@@ -153,7 +153,7 @@ export const texte = {
   // Ticket 115: Zuordnung, Mengen aus dem Modell, Kennwerte, Aufmaßblatt aus Auswahl
   zuordnung: {
     region: 'Zuordnung zu Positionen',
-    bezug: 'LV für Zuordnung',
+    zuordnungsLv: 'LV für Zuordnung',
     lv: (name: string): string => `LV: ${name}`,
     auftrag: (name: string): string => `Auftrags-LV: ${name}`,
     keinLv: 'Das Projekt hat noch kein LV.',
@@ -250,6 +250,12 @@ export const texte = {
     anlegen: 'Aufmaßblatt anlegen',
     abbrechen: 'Abbrechen',
     angelegt: (n: number): string => `Aufmaßblatt ${String(n)} angelegt`,
+    // Ticket 155: Position schon auf einem anderen Blatt (Bauteile vielleicht doppelt gemessen)
+    schonAufgemessen: 'Schon aufgemessen',
+    schonAuf: (oz: string, blaetter: string): string =>
+      `${oz} steht schon auf ${blaetter}. Ob dieselben Bauteile darin aufgemessen sind, bitte dort prüfen.`,
+    blatt: (nummer: number, menge: string | null): string =>
+      menge === null ? `Blatt ${String(nummer)}` : `Blatt ${String(nummer)} (${menge})`,
   },
   seite: {
     laden: 'Modell wird geladen …',
