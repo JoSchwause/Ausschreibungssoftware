@@ -1,6 +1,6 @@
 # 154: App: Kalkulationsansätze speichern, Kostenausgaben, KG-Hinweis
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: C2–C4, E9, E12 · Paket/Ordner: `apps/web/src/kosten/`
 Blocked by: 137, 139, 153
@@ -19,10 +19,10 @@ Herkunft: umfang §3 E9, E12, E2 (B-14)
 
 ## Acceptance criteria
 
-- [ ] E2E für 1–3; M4 grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] E2E für 1–3; M4 grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -61,4 +61,15 @@ Entscheidungen im Demo-Modus (Branch `welle-7/154-kosten`):
 - **D-154.8** Werkzeugleisten (D-89): alle drei Kostenseiten auf `Werkzeugleiste`; auf der Liste die beiden Verweise als
   `Werkzeugverweis`; „Kostenermittlung löschen“ bleibt direkt (Gefahr, ein Klick weniger), die Budgetwahl bleibt in der Leiste.
 
-Ergebnis: siehe unten.
+Ergebnis (nach `git merge integration/welle-7`, Stand `1dbfdca`, samt 150):
+
+- `pnpm lint` und `pnpm typecheck` grün; `src/sprache.test.ts` grün; `src/kosten` 9 Dateien, 82 Tests grün.
+- `pnpm test`: 4.591 bestanden, 3 übersprungen, 10 rot, nur CPU-Budgets in `ausgabe`, `gaeb`, `kern`, `speicher`,
+  `vergabe` und `apps/web/src/abrechnung/leistung.test.ts` bei Last um 25 auf 4 Kernen (andere Agenten); keines davon von 154
+  berührt, keine Schranke geändert.
+- E2E: `kosten` (erweitert: gespeicherte Kalkulation, Band „Kalkulation entfernt“ auf dem echten Weg, „Kalkulation
+  entfernen“, Kostenermittlung und Kostenkontrolle als PDF und Excel mit Vorschau samt Dateiinhalt, Hinweis und Verweis
+  zu den Bezeichnungen, Rückgängig der Einstellung), `m4` (Tor), `einstellungen`, `lv-bedienung`, `x3`, `navigation`: grün.
+
+Offen für 159/Orchestrator: Druckprofil und Datum sind in den Kostenausgaben nicht wählbar (D-154.4); `lv-bedienung.spec.ts`
+könnte die Kalkulation jetzt über den Dialog statt über den Testpfad laden (fremde Spec, nicht geändert).
