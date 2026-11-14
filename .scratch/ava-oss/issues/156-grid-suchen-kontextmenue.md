@@ -1,6 +1,6 @@
 # 156: Suchen, Filtern und Kontextmenü im Grid
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: U, E4 · Paket/Ordner: `packages/ui-grid`, `apps/web/src/lv/`
 Blocked by: 148, 130
