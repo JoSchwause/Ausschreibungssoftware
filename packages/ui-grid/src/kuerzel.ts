@@ -392,3 +392,27 @@ export const NAVIGATIONSAKTIONEN: ReadonlySet<KuerzelAktion> = new Set<KuerzelAk
 export const NAVIGATIONSTASTEN: ReadonlySet<string> = new Set(
   GRID_KUERZEL.filter((k) => NAVIGATIONSAKTIONEN.has(k.aktion)).flatMap((k) => k.muster.map((m) => m.taste)),
 );
+
+/** Was ein Tastendruck in der Leiste „Suchen und filtern“ auslöst. */
+export type Suchleistenaktion = 'suchen' | 'treffer-weiter' | 'treffer-zurueck' | 'abbrechen';
+
+/**
+ * Die Aktion eines Tastendrucks in der Suchleiste, aus `GRID_KUERZEL` (kein zweites Verzeichnis): Strg+F, F3 und
+ * Umschalt+F3 wie im Grid, Esc schließt. Im Suchfeld (`imSuchfeld`) geht Enter zum nächsten, Umschalt+Enter zum vorigen
+ * Treffer, wie es die Einträge `treffer-weiter` und `treffer-zurueck` beschreiben.
+ */
+export function suchleistenAktion(e: Tastendruck, imSuchfeld: boolean): Suchleistenaktion | null {
+  const aktion = kuerzelAktion(e, 'lv');
+  switch (aktion) {
+    case 'suchen':
+    case 'treffer-weiter':
+    case 'treffer-zurueck':
+    case 'abbrechen':
+      return aktion;
+    case 'enter':
+      if (!imSuchfeld) return null;
+      return e.shiftKey ? 'treffer-zurueck' : 'treffer-weiter';
+    default:
+      return null;
+  }
+}

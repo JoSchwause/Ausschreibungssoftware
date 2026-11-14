@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { GRID_KUERZEL, NAVIGATIONSTASTEN, kuerzelAktion } from './kuerzel';
+import { GRID_KUERZEL, NAVIGATIONSTASTEN, kuerzelAktion, suchleistenAktion } from './kuerzel';
 import type { Tastendruck } from './kuerzel';
 
 const taste = (key: string, mit: Partial<Omit<Tastendruck, 'key'>> = {}): Tastendruck => ({
@@ -106,5 +106,30 @@ describe('GRID_KUERZEL', () => {
     expect([...NAVIGATIONSTASTEN].sort()).toEqual(
       ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Home', 'PageDown', 'PageUp'].sort(),
     );
+  });
+});
+
+describe('suchleistenAktion: die Suchleiste bindet ihre Tasten aus GRID_KUERZEL', () => {
+  it('Strg+F, F3, Umschalt+F3 und Esc wie in der Tabelle', () => {
+    expect(suchleistenAktion(taste('f', { ctrlKey: true }), false)).toBe('suchen');
+    expect(suchleistenAktion(taste('F', { metaKey: true }), true)).toBe('suchen');
+    expect(suchleistenAktion(taste('F3'), false)).toBe('treffer-weiter');
+    expect(suchleistenAktion(taste('F3', { shiftKey: true }), true)).toBe('treffer-zurueck');
+    expect(suchleistenAktion(taste('Escape'), false)).toBe('abbrechen');
+    expect(suchleistenAktion(taste('F3', { ctrlKey: true }), true)).toBeNull();
+  });
+
+  it('Enter und Umschalt+Enter nur im Suchfeld', () => {
+    expect(suchleistenAktion(taste('Enter'), true)).toBe('treffer-weiter');
+    expect(suchleistenAktion(taste('Enter', { shiftKey: true }), true)).toBe('treffer-zurueck');
+    expect(suchleistenAktion(taste('Enter'), false)).toBeNull();
+    expect(suchleistenAktion(taste('Enter', { ctrlKey: true }), true)).toBeNull();
+  });
+
+  it('jede Aktion der Leiste steht in der Tabelle', () => {
+    const aktionen = new Set(GRID_KUERZEL.map((k) => k.aktion));
+    for (const a of ['suchen', 'treffer-weiter', 'treffer-zurueck', 'abbrechen'] as const) {
+      expect(aktionen.has(a)).toBe(true);
+    }
   });
 });

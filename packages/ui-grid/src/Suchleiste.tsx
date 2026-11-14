@@ -5,6 +5,7 @@
 
 import { Button, Icon } from '@tethys/ui-basis';
 import type { KeyboardEvent, ReactElement, RefObject } from 'react';
+import { suchleistenAktion } from './kuerzel';
 import { MERKMALFILTER, ZEILENARTEN, filterAktiv, filterText } from './suche';
 import type { Merkmalfilter, Zeilenart, Zeilenfilter } from './suche';
 import { suchtexte } from './texte';
@@ -31,18 +32,16 @@ export function Suchleiste(p: SuchleisteProps): ReactElement | null {
   const gefiltert = filterAktiv(p.filter);
   if (!p.offen && !gefiltert) return null;
 
+  // Die Tasten kommen aus `GRID_KUERZEL` (über `suchleistenAktion`), kein zweites Verzeichnis.
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
-    const strg = e.ctrlKey || e.metaKey;
-    if (e.key === 'Escape' && p.offen) {
-      e.preventDefault();
-      p.onSchliessen();
-    } else if (e.key === 'F3' && !strg && !e.altKey) {
-      e.preventDefault();
-      if (e.shiftKey) p.onZurueck();
-      else p.onWeiter();
-    } else if (strg && !e.altKey && e.key.toLowerCase() === 'f') {
+    const aktion = suchleistenAktion(e, e.target === p.eingabe.current);
+    if (aktion === null || (aktion === 'abbrechen' && !p.offen)) return;
+    e.preventDefault();
+    if (aktion === 'abbrechen') p.onSchliessen();
+    else if (aktion === 'treffer-weiter') p.onWeiter();
+    else if (aktion === 'treffer-zurueck') p.onZurueck();
+    else {
       // Strg+F in der Leiste: zurück ins Suchfeld statt in die Suche des Browsers.
-      e.preventDefault();
       p.eingabe.current?.focus();
       p.eingabe.current?.select();
     }
@@ -72,13 +71,6 @@ export function Suchleiste(p: SuchleisteProps): ReactElement | null {
             value={p.anfrage}
             onChange={(e) => {
               p.onAnfrage(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (e.shiftKey) p.onZurueck();
-                else p.onWeiter();
-              }
             }}
           />
           <span className="tx-grid__suchstand" aria-hidden={p.stand === null ? true : undefined}>
