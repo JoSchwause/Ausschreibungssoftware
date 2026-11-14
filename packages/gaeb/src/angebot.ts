@@ -36,6 +36,7 @@ import { phaseAbweisen } from './abweisung';
 import { deutsch, zahlwert } from './befunde';
 import type { GaebBefund } from './befunde';
 import { EPA_NUMMERN, deuteBeschriftung } from './epa';
+import { leseGaeb2000Angebot } from './gaeb2000';
 import { leseGaeb90Angebot } from './gaeb90';
 import { ANTEILE, kind, kinder, leseMaske, vorlauf, wert } from './lesen';
 import type { Anteil, Leser, VorlaufOptionen } from './lesen';
@@ -610,9 +611,17 @@ function leseBieter(l: Leser, award: XmlElement): Bietervorschlag | null {
  */
 export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOptionen): AngebotLesung {
   const v = vorlauf(eingabe, opt, null, 'angebot', true);
-  if (!v.bereit && v.satzdatei !== undefined) {
-    // GAEB 90 (.d84, Ticket 144): nur Preise je OZ; Bieter aus dem Satz 04, kein Nachlass.
-    const g = leseGaeb90Angebot(v.satzdatei, opt.lv, gleicheMaske);
+  const aelter = v.bereit
+    ? null
+    : v.satzdatei !== undefined
+      ? // GAEB 90 (.d84, Ticket 144): nur Preise je OZ; Bieter aus dem Satz 04, kein Nachlass.
+        { format: 'gaeb-90' as const, g: leseGaeb90Angebot(v.satzdatei, opt.lv, gleicheMaske) }
+      : v.schluesseldatei !== undefined
+        ? // GAEB 2000 (.p84, Ticket 145): Preise je Position; Bieter ist der Auftragnehmer der Datei, kein Nachlass.
+          { format: 'gaeb-2000' as const, g: leseGaeb2000Angebot(v.schluesseldatei, opt.lv, gleicheMaske) }
+        : null;
+  if (aelter !== null) {
+    const { g } = aelter;
     const { lv } = opt;
     return {
       befehl:
@@ -632,7 +641,7 @@ export function leseAngebot(eingabe: Uint8Array | string, opt: AngebotLeseOption
       bieter: g.bietername === null ? null : { name: g.bietername },
       phase: g.phase,
       version: null,
-      format: 'gaeb-90',
+      format: aelter.format,
       befunde: g.befunde,
     };
   }

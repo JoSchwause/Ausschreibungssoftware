@@ -12,6 +12,7 @@ import { texte as lvTexte } from '../lv/texte';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { useRoute } from '../ui/route';
 import { zielNach } from './arten';
+import { EinstellungenAnbieter } from './EinstellungenAnbieter'; // Ticket 150
 import { texte } from './texte';
 
 interface Steuerung {
@@ -99,7 +100,12 @@ export function HistorieAnbieter({ children }: { children: ReactNode }): ReactEl
     rueckgaengig,
     wiederholen,
   };
-  return <Kontext.Provider value={wert}>{children}</Kontext.Provider>;
+  // Ticket 150: die Einstellungen des Geräts (eigenes Rückgängig) für alle Seiten mit Speicher.
+  return (
+    <Kontext.Provider value={wert}>
+      <EinstellungenAnbieter>{children}</EinstellungenAnbieter>
+    </Kontext.Provider>
+  );
 }
 
 /** Die beiden Schaltflächen; deaktiviert, wenn der jeweilige Stapel leer ist. */

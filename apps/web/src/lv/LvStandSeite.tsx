@@ -9,6 +9,7 @@ import type { LeistungsverzeichnisId, LvStand, LvStandId } from '@tethys/vertrag
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
+import { standAlsNeuesLv } from '../historie/staende'; // Ticket 150 (D-82 S6)
 import { texte } from '../historie/texte';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
@@ -16,7 +17,6 @@ import { lvAnsichtBauen } from './ansicht';
 import { befehlswegFuer } from './befehlsweg';
 import { useMeldungen } from './meldungen';
 import { zeitpunktDe } from './StaendeDialog';
-import { standAlsLvBefehl } from './stand';
 import { texte as lvTexte } from './texte';
 import { gridZahlen } from './zahlen';
 import '@tethys/ui-grid/grid.css';
@@ -78,9 +78,12 @@ function StandAnsicht({ stand, gehe }: { stand: LvStand; gehe: (pfad: string) =>
   const lvPfad = `/lv/${lv.id}`;
 
   const alsNeuesLv = async (): Promise<void> => {
-    const befehl = standAlsLvBefehl(stand, u.ids);
-    const a = await befehlswegFuer(u).lv(lv.projektId, null).befehl(befehl);
-    if (pruefe(a)) gehe(`/lv/${befehl.id}`);
+    // Ticket 150 (D-82 S6): mit den Preisspiegel-Einstellungen des Stands, ein Undo-Schritt.
+    const befehle = standAlsNeuesLv(stand, u.ids);
+    const [anlegen, ...rest] = await befehlswegFuer(u).lv(lv.projektId, null).folge(befehle);
+    if (anlegen === undefined || !pruefe(anlegen) || anlegen.zustand === null) return;
+    for (const a of rest) pruefe(a);
+    gehe(`/lv/${anlegen.zustand.leistungsverzeichnis.id}`);
   };
 
   return (

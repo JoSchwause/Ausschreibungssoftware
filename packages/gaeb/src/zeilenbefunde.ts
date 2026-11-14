@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Befunde der Leser für zeilenweise Formate ohne XML (GAEB 90, Ticket 144; für GAEB 2000 in Ticket 145 gedacht): dieselben
+// Befunde der Leser für zeilenweise Formate ohne XML (GAEB 90, Ticket 144; GAEB 2000, Ticket 145): dieselben
 // Befunde wie beim DA-XML-Leser (`GaebBefund`, Gruppe „Nicht übernommen“, OZ am Knoten), der Ort ist die Zeile der Datei.
 // Rein (A2).
 

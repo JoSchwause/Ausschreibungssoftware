@@ -42,10 +42,11 @@ const ERWARTET: Readonly<Record<Leserart, string>> = {
 
 const ERWARTET_FORMAT: Readonly<Record<Leserart, string>> = {
   lv:
-    'Eingelesen werden Leistungsverzeichnisse im Format GAEB DA XML (Endungen .x81, .x83 und .x86) und GAEB 90 ' +
-    '(Endungen .d81, .d83 und .d86).',
+    'Eingelesen werden Leistungsverzeichnisse im Format GAEB DA XML (Endungen .x81, .x83 und .x86), GAEB 90 ' +
+    '(Endungen .d81, .d83 und .d86) und GAEB 2000 (Endungen .p81, .p83 und .p86).',
   angebot:
-    'Als Angebot wird eine Angebotsabgabe im Format GAEB DA XML (Endung .x84) oder GAEB 90 (Endung .d84) eingelesen.',
+    'Als Angebot wird eine Angebotsabgabe im Format GAEB DA XML (Endung .x84), GAEB 90 (Endung .d84) oder GAEB 2000 ' +
+    '(Endung .p84) eingelesen.',
   mengenermittlung:
     'Bei der Abrechnung wird eine Mengenermittlung im Format GAEB DA XML eingelesen (Endung .x31).',
 };
@@ -86,7 +87,10 @@ export function phaseAbweisen(phase: GaebPhase | null, leser: Leserart): Abweisu
   };
 }
 
-/** GAEB 90 oder GAEB 2000: erkannt, aber in diesem Leser nicht gelesen (GAEB 90 lesen seit Ticket 144 LV und Angebot). */
+/**
+ * GAEB 90 oder GAEB 2000: erkannt, aber in diesem Leser nicht gelesen (LV und Angebot lesen GAEB 90 seit Ticket 144 und
+ * GAEB 2000 seit Ticket 145; abgewiesen werden beide nur noch bei der Mengenermittlung).
+ */
 export function formatAbweisen(
   format: 'gaeb-90' | 'gaeb-2000',
   phase: GaebPhase | null,
