@@ -1,6 +1,6 @@
 # 163: Reste aus 158, 159a, 159b
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: `apps/web/src/rechnung/`, `apps/web/src/gaeb/`, `apps/web/src/bauzeit/`, `packages/bauzeit` (nur Alias), `packages/speicher` (nur Dateikopf), `apps/web/e2e/` (nur `zahlungsfreigabe.spec.ts`, `nachtrag.spec.ts`), Ordner der Ursache des Wacklers
 Blocked by: 158, 159a, 159b gemergt
@@ -28,11 +28,11 @@ Herkunft: Abschlussberichte von 158, 159a, 159b; D-110
 
 ## Acceptance criteria
 
-- [ ] Punkte 1–5 erledigt, Entscheidungen als D-163.n unter `## Comments`
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Leistungsbudgets unter Last melden,
+- [x] Punkte 1–5 erledigt, Entscheidungen als D-163.n unter `## Comments`
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün (Leistungsbudgets unter Last melden,
   nie lockern); `zahlungsfreigabe.spec.ts`, `rechnung.spec.ts`, `nachtrag.spec.ts --repeat-each 10`, `vergabe.spec.ts` grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Texte für Nutzer nach L4/L5
+- [x] Texte für Nutzer nach L4/L5
 
 ## Comments
 
@@ -56,3 +56,7 @@ Herkunft: Abschlussberichte von 158, 159a, 159b; D-110
   nimmt (Auswahlliste, Menü, Tooltip, innerer Dialog), bleibt bei ihr. Folge: Escape im Dialog schließt keine Meldung mehr; sie
   geht nach ihrer Zeit oder über F8 und Escape. Tests in `ui-basis/src/Toast.test.ts` (Escape gleich nach dem Öffnen, rot ohne
   Änderung; Liste im Dialog; Meldung bei offenem Dialog). Danach Schleife 10 von 10 grün, Test unverändert.
+- **D-163.4 Prüfläufe.** `pnpm lint`, `pnpm typecheck` grün; `pnpm test` 4825 grün, 1 rot nur Leistungsbudget unter Last
+  (`ausgabe/leistung.test.ts` „druckt gross“, 5.038 ms CPU gegen 5.000 ms, Last ~4 auf 4 Kernen, auch allein rot unter dieser
+  Last; `ausgabe` unverändert, nicht gelockert). E2E: `zahlungsfreigabe`, `rechnung`, `vergabe`, `umsteiger`, `ueberlauf` 10/10;
+  `nachtrag.spec.ts --repeat-each 10` 10/10; volle Web-E2E 129/129 (wegen der Änderung an `Dialog`/`Toast`).
