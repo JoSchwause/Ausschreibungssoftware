@@ -74,6 +74,14 @@ export function umkehren(cs: ChangeSet): ChangeSet {
   switch (cs.art) {
     case 'projekt':
       return { art: 'projekt', projektId: cs.projektId, projekt: tausche(cs.projekt) };
+    // Vertrag v1.7c (Ticket 160, D-96): Tausch in Projekt und Bestand.
+    case 'projektbestand':
+      return {
+        art: 'projektbestand',
+        projektId: cs.projektId,
+        projekt: tausche(cs.projekt),
+        bestand: tausche(cs.bestand),
+      };
     case 'leistungsverzeichnis':
       return {
         art: 'leistungsverzeichnis',

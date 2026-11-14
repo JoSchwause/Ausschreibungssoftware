@@ -16,6 +16,7 @@ import type {
   LvStandBefehl,
   MangelBefehl,
   ProjektBefehl,
+  ProjektSamtInhaltLoeschen,
   RechnungBefehl,
 } from './befehle';
 import type {
@@ -57,6 +58,7 @@ import type { Bauzeitenplan } from './bauzeit';
 import type { Honorarberechnung } from './honorar';
 import type { Bautagebucheintrag, Mangel } from './bauleitung';
 import type { Einstellungen } from './einstellungen';
+import type { Projektbestand } from './speicher';
 
 // --- Ergebnis und Fehler ------------------------------------------------------------------------------------
 
@@ -539,6 +541,33 @@ export interface BautagebucheintragChangeSet {
 }
 
 /**
+ * ChangeSet von `ProjektSamtInhaltLoeschen` (v1.7c, Ticket 160; E8, D-96): das Projekt und sein ganzer Bestand (alle Aggregate,
+ * LV-Stände und das Befehlsprotokoll, siehe `Projektbestand`), je vorher und nachher. Kein Aggregat: Im Protokoll steht der
+ * Befehl mit dem Projekt als Aggregat (`AggregatBezug` `{ art: 'projekt' }`).
+ *
+ * Genau zwei Formen (vorläufige Annahme, Entscheidung offen, enge Lesart; D-160.x im Ticket):
+ * - Löschen: `projekt` und `bestand` mit `vorher` gesetzt und `nachher: null`. `speicher` vergleicht beide mit dem gespeicherten
+ *   Stand (Projekt samt Bietern wie bei `ProjektLoeschen`, der Bestand vollständig wie D-31.2; weicht etwas ab oder fehlt
+ *   etwas, `konflikt`) und löscht alles in **einer** Transaktion, das Protokoll des Projekts eingeschlossen; der Eintrag des
+ *   Löschens bleibt nicht stehen (wie D-31.1). Die Einstellungen und die Bytes der Modelldateien bleiben.
+ * - Umkehrung (Undo): beide mit `vorher: null`. `speicher` legt Projekt und Bestand über den Schreibweg des Einlesens einer
+ *   Projektdatei (`projektdateiEinlesen` ohne `alsKopie` und ohne `einstellungsuebernahme`) mit **denselben Kennungen** zurück,
+ *   in einer Transaktion, das Protokoll aus `bestand.nachher.protokoll` eingeschlossen, und schreibt danach den Eintrag des
+ *   `Rueckgaengig` (sein `protokollId` nennt den nicht gespeicherten Eintrag des Löschens; am Projekt erlaubt, D-31.1). Die
+ *   Bytes der Modelldateien nimmt er aus der Ablage; fehlt eine oder besteht das Projekt oder eine Kennung des Bestands schon
+ *   (etwa nach dem Einlesen der Sicherung), `konflikt`, und nichts wird geschrieben.
+ * Jede andere Form (beide Seiten gesetzt, `null` auf verschiedenen Seiten, `projektId` nicht die Kennung des Projekts) weist
+ * `speicher.anwenden` mit `unbekannt` ab und schreibt nichts (wie D-66). Umkehrbar ohne Vorzustand durch Tausch von `vorher` und
+ * `nachher` in `projekt` und `bestand` (`ProjektbestandChangeSetUmkehren`).
+ */
+export interface ProjektbestandChangeSet {
+  readonly art: 'projektbestand';
+  readonly projektId: ProjektId;
+  readonly projekt: Aenderung<Projekt>;
+  readonly bestand: Aenderung<Projektbestand>;
+}
+
+/**
  * Jedes ChangeSet, das `speicher` schreibt. v1.4 (Ticket 70 Punkt 10): dazu Aufmaßblatt, Rechnung und Kostenermittlung. v1.6
  * (Ticket 97 Punkt 8): dazu Bauwerksmodell, Bauzeitenplan, Honorarberechnung, Mangel und Bautagebucheintrag; bis Ticket 106
  * weist `speicher` sie mit `unbekannt` ab.
@@ -557,7 +586,9 @@ export type ChangeSet =
   | BauzeitenplanChangeSet
   | HonorarberechnungChangeSet
   | MangelChangeSet
-  | BautagebucheintragChangeSet;
+  | BautagebucheintragChangeSet
+  // v1.7c (Ticket 160, D-96)
+  | ProjektbestandChangeSet;
 
 // --- Signaturen für Kern und Vergabe -----------------------------------------------------------------------
 
@@ -583,12 +614,39 @@ export type AngebotBefehlAusfuehren = (
  * Aufrufe mit zwei Argumenten gültig bleiben (A8). Die Normalisierung der Bieterangaben ist eine Funktion des Kerns (Ticket 137
  * exportiert sie, `vergabe` nutzt sie). `ProjektangabenSetzen` und `BieterAnlegen` führt der Kern aus (Ticket 137); die
  * Bieterbefehle weist er mit `befehl-nicht-zustaendig` ab.
+ *
+ * v1.7c (Ticket 160, D-96): `ProjektSamtInhaltLoeschen` braucht den Bestand und liefert ein anderes ChangeSet; dieser Ausführer
+ * weist ihn mit `ungueltige-eingabe` (`feld: 'bestand'`) ab. Ausgeführt wird er mit `ProjektSamtInhaltLoeschenAusfuehren`.
  */
 export type ProjektBefehlAusfuehren = (
   zustand: Projekt | null,
   befehl: ProjektBefehl,
   verweise?: readonly Verweisanzahl[],
 ) => Ergebnis<ProjektChangeSet, Befehlsfehler>;
+
+/**
+ * Führt `ProjektSamtInhaltLoeschen` aus (v1.7c, Ticket 160; E8, D-96): rein (A2). `bestand` ist der gespeicherte Bestand des
+ * Projekts (die App liest ihn aus dem Speicher) und **Pflicht**: Nur mit ihm ist das ChangeSet allein umkehrbar (Q5). Liefert
+ * `kern` (Ticket 161) als schmale exportierte Funktion neben `ProjektBefehlAusfuehren`, das den Befehl ohne Bestand mit
+ * `ungueltige-eingabe` (`feld: 'bestand'`) abweist (wie D-127.17).
+ *
+ * Lesarten (vorläufige Annahme, Entscheidung offen, enge Lesart): `zustand: null` → `befehl-nicht-zustaendig` (wie jeder
+ * Projektbefehl außer `ProjektAnlegen`); `bestand` nicht in der Form eines `Projektbestand` (kein Objekt, Pflichtliste fehlt) →
+ * `ungueltige-eingabe` (`feld: 'bestand'`). Ob der Bestand vollständig und der gespeicherte ist, prüft `speicher` (`konflikt`).
+ * Ein leerer Bestand ist erlaubt (dann löscht der Befehl wie `ProjektLoeschen`, aber mit Protokoll). Ergebnis: `projekt`
+ * `{ vorher: zustand, nachher: null }`, `bestand` `{ vorher: bestand, nachher: null }`.
+ */
+export type ProjektSamtInhaltLoeschenAusfuehren = (
+  zustand: Projekt | null,
+  befehl: ProjektSamtInhaltLoeschen,
+  bestand: Projektbestand,
+) => Ergebnis<ProjektbestandChangeSet, Befehlsfehler>;
+
+/**
+ * Kehrt ein `ProjektbestandChangeSet` um (v1.7c, Ticket 160; Undo, ADR 0006): `vorher` und `nachher` getauscht, in `projekt`
+ * und in `bestand`. Liefert `kern` (Ticket 161).
+ */
+export type ProjektbestandChangeSetUmkehren = (changeSet: ProjektbestandChangeSet) => ProjektbestandChangeSet;
 
 /**
  * v1.7a (Ticket 127, E8, D-74): `verweise` sind die Verweise des Projekts auf dieses Auftrags-LV (Nachträge, Aufmaßblätter,
