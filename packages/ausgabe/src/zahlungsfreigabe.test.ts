@@ -3,8 +3,17 @@
 // Zahlbetrag beide Fälle des Skontos, Bauabzugsteuer „an das Finanzamt“, Auszahlung, Zahlungen und offener Betrag. Die
 // Zahlen sind Eingaben, hier von Hand nach D-72 hergeleitet (der Druck rechnet nichts, A2).
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { Betrag, Kalenderdatum, Prozent, Rechnung, ZahlungId, Zahlungsstand } from '@tethys/vertrag';
+import type {
+  Betrag,
+  Kalenderdatum,
+  Prozent,
+  Rechnung,
+  RechnungId,
+  ZahlungId,
+  Zahlungsstand,
+} from '@tethys/vertrag';
 import { baueRechnungspruefungModell, erzeugeRechnungspruefungPdf } from './index';
 import type { BerichtBlock, BerichtZelle, RechnungspruefungEingabe } from './index';
 import { alsText, liesPdf } from './pdftext';
@@ -249,5 +258,103 @@ describe('Zahlungsfreigabe: PDF', () => {
       'Sachlich und rechnerisch richtig',
     ])
       expect(t, s).toContain(s);
+  });
+});
+
+// --- Sollwerte aus `fixtures/typisch-zahlungen.json` (hergeleitet nach D-72, D-34; C4) ------------------------------------
+
+interface Fixturekette {
+  readonly leistung: Betrag;
+  readonly nachlass: Betrag;
+  readonly nettoNachNachlass: Betrag;
+  readonly mwst: Betrag;
+  readonly bruttoKumuliert: Betrag;
+  readonly umlagen: RechnungspruefungEingabe['pruefung']['kette']['umlagen'];
+  readonly vertragsstrafe: Betrag;
+  readonly einbehalt: Betrag;
+  readonly fruehereZahlbetraege: Betrag;
+  readonly zahlbetrag: Betrag;
+}
+const fixture = JSON.parse(
+  readFileSync(new URL('../../../fixtures/typisch-zahlungen.json', import.meta.url), 'utf8'),
+) as {
+  readonly rechnungen: readonly Rechnung[];
+  readonly pruefungen: Readonly<
+    Record<'ar1' | 'ar2', { readonly kette: Fixturekette; readonly zahlungsstand: Zahlungsstand }>
+  >;
+};
+
+/** Die Eingabe des Drucks zu einer Rechnung der Fixture: Kette und Zahlungsstand unverändert, wie die App sie durchreicht. */
+function ausFixture(nr: 1 | 2): RechnungspruefungEingabe {
+  const r = fixture.rechnungen[nr - 1];
+  const vorige = fixture.rechnungen[0];
+  if (r === undefined || vorige === undefined) throw new Error('Rechnung fehlt in der Fixture');
+  const { kette, zahlungsstand: zs } = fixture.pruefungen[nr === 1 ? 'ar1' : 'ar2'];
+  return {
+    rechnung: r,
+    auftragsLv,
+    pruefung: {
+      leistungsstand: {
+        positionen: [],
+        leistung: kette.leistung,
+        nachlass: kette.nachlass,
+        nettoNachNachlass: kette.nettoNachNachlass,
+      },
+      kette: {
+        ...kette,
+        einbehalt: { art: 'sicherheit', satz: r.sicherheitSatz, betrag: kette.einbehalt },
+        fruehere:
+          nr === 1 || vorige.freigabe === null
+            ? []
+            : [{ rechnungId: vorige.id as RechnungId, nummer: 1, zahlbetrag: vorige.freigabe.zahlbetrag }],
+      },
+      forderung: null,
+      zahlungsstand: zs,
+    },
+    datum: '2026-12-16',
+  };
+}
+
+describe('Zahlungsfreigabe: Sollwerte der Fixture typisch-zahlungen', () => {
+  it('AR 1: Skonto verwirklicht, Bauabzugsteuer an das Finanzamt, nichts offen', async () => {
+    const t = normal(alsText(await liesPdf(await erzeugeRechnungspruefungPdf(ausFixture(1), schriften))));
+    for (const s of [
+      'Zahlbetrag 8.874,40 €',
+      'Bei Zahlung bis 13.11.2026',
+      'Skonto (3,00 %) −266,23 0,00',
+      'Bauabzugsteuer 15,00 % an das Finanzamt −1.291,23 −1.331,16',
+      'Auszahlung an den Auftragnehmer 7.316,94 7.543,24',
+      'Bei Zahlung bis 13.11.2026: Auszahlung 7.316,94 €, danach: 7.543,24 €.',
+      'Zahlbetrag (eingefroren) 8.874,40 €',
+      'Skonto (verwirklicht) −266,23 €',
+      'Bauabzugsteuer 15,00 % an das Finanzamt −1.291,23 €',
+      'Auszahlung an den Auftragnehmer 7.316,94 €',
+      'Summe der Zahlungen −7.316,94 €',
+      'Offen 0,00 €',
+      'Zahlung vom 13.11.2026: 7.316,94 €',
+    ])
+      expect(t, s).toContain(s);
+    expect(t).not.toContain('Vertragsstrafe');
+  });
+
+  it('AR 2: Vertragsstrafe in der Kette, Zahlung nach der Frist, ohne Bauabzugsteuer, 570,67 offen', async () => {
+    const t = normal(alsText(await liesPdf(await erzeugeRechnungspruefungPdf(ausFixture(2), schriften))));
+    for (const s of [
+      'Umlage Bauwesenversicherung (0,50 %) −100,24 € ' +
+        'Vertragsstrafe (Zwischenfrist Rohbau um 3 Werktage überschritten (erfunden)) −1.500,00 € ' +
+        'Sicherheitseinbehalt (5,00 %) −1.002,39 €',
+      'Zahlbetrag Rechnung 1 (freigegeben) −8.874,40 €',
+      'Zahlbetrag 8.570,67 €',
+      'Bei Zahlung bis 07.12.2026',
+      'Skonto (2,00 %) −171,41 0,00',
+      'Auszahlung an den Auftragnehmer 8.399,26 8.570,67',
+      'Skonto (nicht verwirklicht) 0,00 €',
+      'Summe der Zahlungen −8.000,00 €',
+      'Offen 570,67 €',
+      'Zahlung vom 04.12.2026: 5.000,00 €',
+      'Zahlung vom 15.12.2026: 3.000,00 €',
+    ])
+      expect(t, s).toContain(s);
+    expect(t).not.toContain('Bauabzugsteuer 15,00 %');
   });
 });
