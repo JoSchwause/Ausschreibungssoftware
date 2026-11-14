@@ -17,6 +17,8 @@ Herkunft: umfang §3 E11, A5
    Bauabzugsteuer; Anzeige beider Szenarien („bei Zahlung bis TT.MM.JJJJ: …, danach: …“).
 3. **Zahlungen** je Rechnung (Datum, Betrag) erfassen, ändern, löschen; offener Betrag; „Freigabe aufheben“ gesperrt mit Text,
    solange Zahlungen bestehen.
+5. **Aus 142 (D-89):** Schaltflächenreihen auf `Werkzeuggruppe`/`Werkzeugverweis` aus `ui-basis` umstellen, wo billig; `abrechnung/Verweis.tsx` ist unbenutzt und entfällt.
+6. **Texte wie im PDF (153):** „Bauabzugsteuer 15,00 % an das Finanzamt“, „Auszahlung an den Auftragnehmer“, „Summe der Zahlungen“, „Offen“ – am Bildschirm dieselben Bezeichnungen.
 4. E2E mit den Sollwerten der Fixture aus 143.
 
 ## Acceptance criteria

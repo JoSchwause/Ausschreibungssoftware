@@ -3,7 +3,14 @@
 // statt Dialog; bei gleicher Eingabe gleiche Bytes (das Erzeugungsdatum kommt aus dem Modell, keine Uhr).
 
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
-import type { BerichtAbschnitt, BerichtBlock, BerichtSpalte, BerichtZelle, Berichtsmodell } from './bericht';
+import type {
+  Balken,
+  BerichtAbschnitt,
+  BerichtBlock,
+  BerichtSpalte,
+  BerichtZelle,
+  Berichtsmodell,
+} from './bericht';
 import { briefkopf, SCHRIFT, erzeugungsdatum, pdfBytes } from './pdfmake';
 import { ersetzePlatzhalter } from './platzhalter';
 import type { Schriften } from './schriften';
@@ -12,6 +19,18 @@ const GRAU = '#555555';
 /** Seitenränder `[links, oben, rechts, unten]` in pt, wie beim LV-Druck „normal“ und „eng“. */
 const RAENDER = { normal: [40, 50, 40, 46], eng: [28, 44, 28, 40] } as const;
 const EINRUECKUNG = 10;
+
+/** Linien und Abstände der Tabellen: oben und unten kräftiger, zwischen den Zeilen fein, keine senkrechten Linien. */
+const TABELLENLINIEN = {
+  hLineWidth: (i: number, k: { table: { body: unknown[] } }) =>
+    i === 0 || i === k.table.body.length ? 0.6 : 0.3,
+  vLineWidth: () => 0,
+  hLineColor: () => GRAU,
+  paddingLeft: () => 2,
+  paddingRight: () => 2,
+  paddingTop: () => 2,
+  paddingBottom: () => 2,
+};
 
 /** Kopf einer Spalte; bei Teilen deren Bezeichnungen darunter („EP / GP“). */
 function spaltenkopf(s: BerichtSpalte): Content {
@@ -31,6 +50,97 @@ function zellInhalt(z: BerichtZelle): Content[] {
     ...z.werte.map((w): Content => ({ text: w.text, ...(z.fett === true ? { bold: true } : {}) })),
     ...(z.hinweis === undefined ? [] : [{ text: z.hinweis, fontSize: 6, color: GRAU }]),
   ];
+}
+
+/** Breite der Zeitachse im Balkenplan in pt; passt neben einer Namensspalte auf A4 hoch, auch mit normalem Rand. */
+const BALKEN_BREITE = 300;
+/** Höhe einer Zeile des Balkenplans in pt. */
+const BALKEN_HOEHE = 10;
+/** Unter dieser Breite in pt bleibt ein Abschnitt der Achse ohne Beschriftung (sie passte nicht). */
+const MIN_BESCHRIFTUNG = 24;
+const LINIE = '#bbbbbb';
+const BALKENFARBE: Readonly<Record<Balken['art'], string>> = {
+  vorgang: '#8d9aa8',
+  kritisch: '#222222',
+  sammelvorgang: '#000000',
+  meilenstein: '#000000',
+};
+
+/** Die Zeichnung eines Balkens samt Linien der Achsenabschnitte (pdfmake-Canvas, Koordinaten in pt). */
+function balkenZeichnung(balken: Balken | null, grenzen: readonly number[]): Content {
+  const x = (anteil: number): number => Math.round(anteil * BALKEN_BREITE * 100) / 100;
+  const linien = grenzen.map((g) => ({
+    type: 'line' as const,
+    x1: x(g),
+    y1: 0,
+    x2: x(g),
+    y2: BALKEN_HOEHE,
+    lineWidth: 0.3,
+    lineColor: LINIE,
+  }));
+  const farbe = balken === null ? '' : BALKENFARBE[balken.art];
+  const form =
+    balken === null
+      ? []
+      : balken.art === 'meilenstein'
+        ? [
+            {
+              type: 'polyline' as const,
+              closePath: true,
+              color: farbe,
+              points: [
+                { x: x(balken.von), y: 1 },
+                { x: x(balken.von) + 4, y: 5 },
+                { x: x(balken.von), y: 9 },
+                { x: x(balken.von) - 4, y: 5 },
+              ],
+            },
+          ]
+        : [
+            {
+              type: 'rect' as const,
+              x: x(balken.von),
+              y: balken.art === 'sammelvorgang' ? 3.5 : 2,
+              w: Math.max(x(balken.bis) - x(balken.von), 1),
+              h: balken.art === 'sammelvorgang' ? 3 : 6,
+              color: farbe,
+            },
+          ];
+  return { canvas: [...linien, ...form] };
+}
+
+function balkenplanBlock(b: Extract<BerichtBlock, { art: 'balkenplan' }>): Content {
+  const grenzen = b.achse.slice(1).map((a) => a.von);
+  const kopf: Content[] = [
+    { text: 'Vorgang', bold: true, fontSize: 7 },
+    {
+      columns: b.achse.map((a) => {
+        const breite = Math.round((a.bis - a.von) * BALKEN_BREITE * 100) / 100;
+        return {
+          width: breite,
+          text: breite < MIN_BESCHRIFTUNG ? '' : a.text,
+          fontSize: 6,
+          color: GRAU,
+        };
+      }),
+      columnGap: 0,
+    },
+  ];
+  const zeilen = b.zeilen.map((z): Content[] => [
+    {
+      text: z.name,
+      ...(z.fett === true ? { bold: true } : {}),
+      ...((z.einrueckung ?? 0) > 0
+        ? { margin: [(z.einrueckung ?? 0) * EINRUECKUNG, 0, 0, 0] as [number, number, number, number] }
+        : {}),
+    },
+    balkenZeichnung(z.balken, grenzen),
+  ]);
+  return {
+    table: { headerRows: 1, dontBreakRows: true, widths: ['*', BALKEN_BREITE], body: [kopf, ...zeilen] },
+    layout: TABELLENLINIEN,
+    margin: [0, 2, 0, 6],
+  };
 }
 
 function block(b: BerichtBlock): Content {
@@ -72,6 +182,8 @@ function block(b: BerichtBlock): Content {
           margin: [0, 1, 0, 1],
         })),
       };
+    case 'balkenplan':
+      return balkenplanBlock(b);
     case 'tabelle': {
       const kopf = b.spalten.map(spaltenkopf);
       const zeilen = b.zeilen.map((z) =>
@@ -102,16 +214,7 @@ function block(b: BerichtBlock): Content {
           widths: b.spalten.map((s) => s.breite),
           body: [kopf, ...zeilen],
         },
-        layout: {
-          hLineWidth: (i: number, k: { table: { body: unknown[] } }) =>
-            i === 0 || i === k.table.body.length ? 0.6 : 0.3,
-          vLineWidth: () => 0,
-          hLineColor: () => GRAU,
-          paddingLeft: () => 2,
-          paddingRight: () => 2,
-          paddingTop: () => 2,
-          paddingBottom: () => 2,
-        },
+        layout: TABELLENLINIEN,
         margin: [0, 2, 0, 6],
       };
     }
