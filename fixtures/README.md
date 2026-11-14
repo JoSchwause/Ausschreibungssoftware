@@ -45,7 +45,8 @@ nach, ohne die Pakete `bauzeit`, `honorar` und `bauleitung`.
 | `bauzeit.json` | Tor X2 (D-58, Ticket 112): Bauzeitenplan mit 8 Vorgängen in Sachsen 2026 (Sammelvorgang, Meilenstein, alle vier Anordnungsarten, Abstand 0 und −1, Buß- und Bettag und Wochenenden auf dem kritischen Weg); Projektende Di 24.11.2026 | selbst verfasst, erfunden, Sollwerte von Hand (siehe „Bauzeitenplan: Tor X2“) |
 | `honorar.json` | Tor X3 (D-58, Ticket 112): Gebäude, Zone III, Honorarsatz 50 %, § 33 mit KG 400 über 25 %, LPH 1–9, Umbauzuschlag 25 %, Nebenkosten 4,50 %, MwSt 19 %; Brutto 267.595,90 | selbst verfasst, erfunden; Tafelzeilen und Phasen aus der HOAI 2021 abgeschrieben (amtliches Werk), Sollwerte von Hand (siehe „Honorar: Tor X3“) |
 | `bauleitung.json` | Tor X4 (D-58, Ticket 112): fünf Mängel an zwei Auftragnehmern, Stichtag 26.11.2026 mit genau einem überfälligen, drei Bautagebucheinträge; Auswertungen | selbst verfasst, erfunden, Sollwerte von Hand (siehe „Bauleitung: Tor X4“) |
-| `erzeugen.mjs`, `rechnen.mjs`, `fixtures.test.mjs` | Generator, Dezimalrechnung, Selbsttest | selbst verfasst |
+| `typisch-zahlungen.json` | Strang A5 (D-72, Ticket 143): auf M4 aufbauend AR 1 mit Skonto 3 % / 14 Tage, Bauabzugsteuer und Zahlung am Fristende (verwirklicht, offen 0,00), AR 2 mit Vertragsstrafe 1.500,00, Skonto 2 % / 10 Tage, Teilzahlung in und Zahlung nach der Frist (kein Skonto, offen 570,67); vier Varianten | selbst verfasst, erfunden, Sollwerte von Hand (siehe „Abzüge und Zahlungen: A5“), Selbsttest `zahlungen.test.mjs` |
+| `erzeugen.mjs`, `rechnen.mjs`, `fixtures.test.mjs`, `zahlungen.test.mjs` | Generator, Dezimalrechnung, Selbsttests | selbst verfasst |
 
 Lizenz: AGPL-3.0-or-later (REUSE-Abdeckung über den Repo-weiten Glob für `fixtures/**`).
 
@@ -488,6 +489,30 @@ Bautagebuch (16.11., 17.11., 19.11.2026; der 18.11. ist Buß- und Bettag) für d
 eingeschlossen: je Tag 9, 8, 9; je Firma (nach Namen) Elektro Probe OHG 2, Rohbau Muster GmbH 6 + 6 + 7 = 19, Tiefbau
 Beispiel KG 3 + 2 = 5; Summe **26**. Gegenprobe 17.11. bis 19.11.: Summe 17. Die Temperatur am 19.11. ist −3 (ganze Zahl,
 negativ).
+
+## Abzüge und Zahlungen: A5 (Ticket 143)
+
+`typisch-zahlungen.json` baut auf `typisch-abrechnung.json` auf (gleiche Kennungen, Stand von M4): AR 1 wird vor der Korrektur
+von Blatt 1 geprüft und freigegeben (8.874,40 wie M4), AR 2 danach. Die Fixture nennt die Befehle (`befehle`, vor und nach
+der Freigabe), die Rechnungen danach in der Form von `Rechnung` (v1.7b), je Rechnung die Abzugskette mit der Zeile
+`vertragsstrafe` und den `Zahlungsstand` (Feldnamen des Vertrags) und vier Varianten. Eingaben und Sollwerte sind von Hand
+geschrieben und hergeleitet (`herleitung`); `zahlungen.test.mjs` rechnet sie eigens nach (BigInt, eigener Kalender, ohne
+Pakete). Regeln: D-72 mit den Lesarten D-128.3 bis D-128.8 und D-93.
+
+| Schritt | Regel | AR 1 | AR 2 |
+|---|---|---|---|
+| Vertragsstrafe | brutto, kumuliert, nach den Umlagen, vor dem Einbehalt; Basis von Umlage und Einbehalt bleibt Brutto kum. | 0,00 | 1.500,00 |
+| Zahlbetrag (eingefroren) | D-34 (7) mit Vertragsstrafe | 8.874,40 | 20.047,70 − 100,24 − 1.500,00 − 1.002,39 − 8.874,40 = **8.570,67** |
+| Fristende | Eingang + Frist in Kalendertagen, der Eingangstag zählt nicht | 30.10. + 14 = 13.11.2026 | 27.11. + 10 = 07.12.2026 |
+| Möglicher Skonto | round(Zahlbetrag × Satz, 2), 0 bei Zahlbetrag ≤ 0 | 3 %: 266,232 → 266,23 | 2 %: 171,4134 → 171,41 |
+| Bauabzugsteuer | round((Zahlbetrag − Skonto des Falls) × 15 %, 2), 0 bei Basis ≤ 0 (D-93) | mit Skonto 8.608,17 × 15 % = 1.291,2255 → 1.291,23; ohne 1.331,16 | aus: 0,00 |
+| Auszahlung | Zahlbetrag − Skonto − Steuer | mit 7.316,94; ohne 7.543,24 | mit 8.399,26; ohne 8.570,67 |
+| Zahlungen | Skonto verwirklicht, wenn bis Fristende ≥ Auszahlung mit Skonto | 7.316,94 am 13.11. (am Fristende): verwirklicht | 5.000,00 am 04.12. (Teilzahlung), 3.000,00 am 15.12.: nicht verwirklicht |
+| Offen | Zahlbetrag − verwirklichter Skonto − Steuer − Σ Zahlungen | **0,00** | **570,67** |
+
+Varianten: `ar1-ohne-neue-felder` (eine Rechnung vor v1.7b: offen = Zahlbetrag 8.874,40), `ar1-zahlung-nach-fristende`
+(dieselbe Zahlung am 14.11.: Steuer 1.331,16, offen 226,30), `ar1-ueberzahlung` (dazu 50,00 am 20.11.: offen −50,00, Befund
+„Zahlungen über der Auszahlung“), `ar2-ohne-eingang` (kein Fristende, kein Skonto, Befund „Skonto ohne Eingangsdatum“).
 
 ## Handrechnung `winzig` (MwSt 19 %, kein Nachlass)
 
