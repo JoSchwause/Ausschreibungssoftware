@@ -1,6 +1,6 @@
 # 162: Fokus nach dem Löschen eines Druckprofils
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: O, E15 · Paket/Ordner: `apps/web/src/ausgabe/` (Druckprofile), `apps/web/e2e/druckprofil.spec.ts` nur falls der Test selbst falsch ist
 Blocked by: –
