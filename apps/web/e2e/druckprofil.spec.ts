@@ -40,6 +40,18 @@ async function pdfText(page: Page): Promise<string> {
   return alsText(await liesPdf(new Uint8Array(bytes))).replace(/\s+/g, ' ');
 }
 
+/** Öffnet die Auswahl der Druckprofile, prüft, ob `name` darin steht, und schließt sie wieder. */
+async function profilInAuswahl(page: Page, name: string, vorhanden: boolean): Promise<void> {
+  const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
+  await dialog.getByRole('combobox', { name: 'Druckprofil' }).click();
+  const liste = page.getByRole('listbox');
+  await expect(liste.getByRole('option', { name, exact: true })).toHaveCount(vorhanden ? 1 : 0);
+  // Radix setzt den Fokus in die Liste über einen Zeitgeber; erst danach schließt Escape die Liste (nicht den Dialog).
+  await expect(liste.locator(':focus')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(liste).toHaveCount(0);
+}
+
 async function profilWaehlen(page: Page, name: string): Promise<void> {
   const dialog = page.getByRole('dialog', { name: 'LV als PDF ausgeben' });
   await dialog.getByRole('combobox', { name: 'Druckprofil' }).click();
@@ -112,17 +124,11 @@ test('Eigenes Profil: anlegen, bleibt nach dem Neuladen, exportieren, löschen, 
   await expect(dialog.getByRole('combobox', { name: 'Druckprofil' })).toContainText('Bieter ohne Preise');
   await dialog.getByRole('button', { name: 'Profil löschen' }).click();
   await frage.getByRole('button', { name: 'Profil löschen' }).click();
-  await dialog.getByRole('combobox', { name: 'Druckprofil' }).click();
-  await expect(page.getByRole('option', { name: 'Bieter ohne Preise' })).toHaveCount(0);
-  await page.keyboard.press('Escape');
+  await profilInAuswahl(page, 'Bieter ohne Preise', false);
   await dialog.getByRole('button', { name: 'Einstellung rückgängig' }).click();
-  await dialog.getByRole('combobox', { name: 'Druckprofil' }).click();
-  await expect(page.getByRole('option', { name: 'Bieter ohne Preise' })).toBeVisible();
-  await page.keyboard.press('Escape');
+  await profilInAuswahl(page, 'Bieter ohne Preise', true);
   await dialog.getByRole('button', { name: 'Einstellung wiederholen' }).click();
-  await dialog.getByRole('combobox', { name: 'Druckprofil' }).click();
-  await expect(page.getByRole('option', { name: 'Bieter ohne Preise' })).toHaveCount(0);
-  await page.keyboard.press('Escape');
+  await profilInAuswahl(page, 'Bieter ohne Preise', false);
 
   await dialog.getByLabel('Profil-Datei wählen').setInputFiles({
     name: 'bieter.json',
