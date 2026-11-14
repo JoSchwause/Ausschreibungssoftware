@@ -2,8 +2,16 @@
 // Aufmaßblatt aus Auswahl (Ticket 108 Punkt 3, D-53): je zugeordneter Position die Zeilen nur der ausgewählten Bauteile, Regeln
 // wie bei der Mengenübernahme; die Auswahl „Geschoss“ über `bauteileImStrukturknoten`.
 
+import type {
+  Aufmass,
+  AufmassId,
+  AuftragsLeistungsverzeichnisId,
+  Menge,
+  PositionId,
+  ProjektId,
+} from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { aufmassAusAuswahl, bauteileImStrukturknoten } from './index';
+import { aufmassAusAuswahl, aufmassUeberschneidungen, bauteileImStrukturknoten } from './index';
 import { bauteil, gid, lv, menge, modell, position, zeile, zuordnung } from './testhilfe/bauen';
 
 const mitRaum = () =>
@@ -53,5 +61,49 @@ describe('aufmassAusAuswahl', () => {
     expect(a.positionen[0]?.zeilen).toEqual([]);
     expect(a.positionen[0]?.menge).toBeNull();
     expect(a.befunde.map((b) => b.code)).toEqual(['einheit-passt-nicht', 'bauteil-fehlt']);
+  });
+});
+
+describe('aufmassUeberschneidungen (Ticket 155)', () => {
+  const blatt = (id: string, nummer: number, positionen: readonly [string, string | null][]): Aufmass => ({
+    id: id as AufmassId,
+    projektId: 'p' as ProjektId,
+    auftragsLvId: 'a' as AuftragsLeistungsverzeichnisId,
+    nummer,
+    bezeichnung: '',
+    datum: null,
+    positionen: positionen.map(([p, m]) => ({
+      positionId: p as PositionId,
+      mengenansatz: null,
+      menge: m as Menge | null,
+    })),
+  });
+
+  it('nennt je Position des Vorschlags mit Zeilen die anderen Blätter, die sie schon aufmessen, nach Nummer', () => {
+    const knoten = lv(
+      position('a', 'm', [zuordnung('W1', 'Length')]),
+      position('b', 'm', [zuordnung('W2', 'Length')]),
+      position('c', 'm²', [zuordnung('S1', 'Length')]),
+    );
+    const vorschlag = aufmassAusAuswahl(knoten, mitRaum(), [gid('W1'), gid('W2'), gid('S1')]);
+    const blaetter = [
+      blatt('b3', 3, [['a', '2.000']]),
+      blatt('b1', 1, [
+        ['a', '5.000'],
+        ['c', null],
+      ]),
+      blatt('b2', 2, [['x', '1.000']]),
+    ];
+    // `c` hat keine Zeile (Einheit passt nicht) und wird kein Teil des Blatts: kein Hinweis.
+    expect(aufmassUeberschneidungen(vorschlag, blaetter)).toEqual([
+      {
+        positionId: 'a',
+        blaetter: [
+          { aufmassId: 'b1', nummer: 1, menge: '5.000' },
+          { aufmassId: 'b3', nummer: 3, menge: '2.000' },
+        ],
+      },
+    ]);
+    expect(aufmassUeberschneidungen(vorschlag, [])).toEqual([]);
   });
 });

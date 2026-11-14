@@ -7,13 +7,8 @@
 // Hash, den der Kopf beim Lesen noch nicht kennt, setzt die App danach in `datei` ein (`ifc` übernimmt den Kopf unverändert).
 
 import type { BauwerksmodellLesung } from '@tethys/ifc';
-import type {
-  BauwerksmodellId,
-  BauwerksmodellKopf,
-  Pruefbefund,
-  ProjektId,
-  Zeitstempel,
-} from '@tethys/vertrag';
+import type { BauwerksmodellId, BauwerksmodellKopf, Pruefbefund, ProjektId } from '@tethys/vertrag';
+import { datumAusUhr } from '../ausgabe/logik';
 import type { Abweisung, Umgebung } from '../lv/befehlsweg';
 import { bauwerksmodellSitzung } from './schreiben';
 import { texte } from './texte';
@@ -43,13 +38,6 @@ export function namensvorschlag(dateiname: string): string {
   return ohne.trim() === '' ? dateiname : ohne;
 }
 
-/** `JJJJ-MM-TT` des Zeitpunkts in der Ortszeit des Nutzers. */
-export function tagDesEinlesens(wann: Zeitstempel | string): string {
-  const d = new Date(wann);
-  const zwei = (n: number): string => String(n).padStart(2, '0');
-  return `${String(d.getFullYear())}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`;
-}
-
 export type Einlesung =
   | { readonly art: 'angelegt'; readonly id: BauwerksmodellId; readonly befunde: readonly Pruefbefund[] }
   /** Die Datei ergab kein Modell (zu groß, keine IFC-Datei, anderes Schema); nichts geschrieben. */
@@ -69,7 +57,7 @@ export async function modellEinlesen(
     name: optionen.name?.trim() || namensvorschlag(datei.name),
     datei: { hash: '', dateiname: datei.name, groesse: datei.bytes.length },
     vorgaengerId: optionen.vorgaengerId,
-    eingelesen: tagDesEinlesens(u.uhr()),
+    eingelesen: datumAusUhr(u.uhr()), // Ticket 155: der eine Tag aus der Uhr der App
   };
   const lesung = await optionen.lesen(datei.bytes, kopf);
   const befunde = gross === null ? lesung.befunde : [gross, ...lesung.befunde];

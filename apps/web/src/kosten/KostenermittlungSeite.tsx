@@ -2,10 +2,11 @@
 // Seite `/projekt/<id>/kosten/<kid>` (Ticket 89, C3): eine Kostenermittlung. Die Kostengruppen stehen im gemeinsamen
 // Vergleichsgrid (U2) mit Summen je Gruppe und gesamt (`kostenermittlungBerechnen`); Einträge setzt und entfernt ein
 // Formular (jede Änderung ein Befehl, ein Undo-Schritt). Die Bezeichnungen aus der CSV des Nutzers sind eine Einstellung
-// dieses Geräts, nicht Teil der Projektdatei (G-16). Hinweise zur Ermittlung blockieren nie (U5).
+// (G-16); solange keine da sind, steht ein Hinweis mit Verweis zum Einlesen (Ticket 154, B-14). Hinweise zur Ermittlung
+// blockieren nie (U5). Ticket 154 (E12): „Ausgabe“ mit Vorschau, PDF und Excel; Werkzeugleiste aus `ui-basis` (D-89).
 
 import { kostenermittlungBerechnen } from '@tethys/kosten';
-import { Auswahl, Button, Dialog, Eingabefeld } from '@tethys/ui-basis';
+import { Auswahl, Button, Dialog, Eingabefeld, Werkzeuggruppe, Werkzeugleiste } from '@tethys/ui-basis';
 import { VergleichsGrid } from '@tethys/ui-grid';
 import type {
   KostenermittlungId,
@@ -13,19 +14,22 @@ import type {
   Kostenermittlungsstufe,
   ProjektId,
 } from '@tethys/vertrag';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ChangeEvent, ReactElement, SyntheticEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { ReactElement, SyntheticEvent } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { ermittlungAnsicht } from './ansicht';
-import { bezeichnungenAusCsv, bezeichnungenGemerkt, bezeichnungenMerken } from './bezeichnungen';
+import { BezeichnungenBereich, BezeichnungenHinweis, useBezeichnungen } from './Bezeichnungen';
+import { dateinameKostenermittlung, kostenermittlungEingabe } from './berichte';
+import { KostenAusgabe } from './KostenAusgabe';
 import { eintragEntfernenBefehl, eintragSetzenBefehl, kopfBefehl, type Feld } from './befehle';
-import { kontrollePfad, kostenPfad } from './pfad';
+import { BEZEICHNUNGEN_ANKER, kontrollePfad, kostenPfad, kostenermittlungPfad } from './pfad';
 import { kostenermittlungSitzung } from './schreiben';
 import { STUFEN, texte } from './texte';
 import { Verweis } from '../ui/Verweis';
+import { HonorarVerweise } from '../honorar/HonorarVerweise'; // Ticket 155: Verweis zum Honorar
 import '@tethys/ui-grid/grid.css';
 import '../lv/lv.css';
 import './kosten.css';
@@ -109,9 +113,8 @@ function Editor({
   const sitzung = useMemo(() => kostenermittlungSitzung(u, k.projektId, zustand), [u, k.projektId, zustand]);
 
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
-  const [csv, setCsv] = useState<string | null>(() => bezeichnungenGemerkt());
-  const [csvMeldung, setCsvMeldung] = useState<string | null>(null);
-  const bezeichnungen = useMemo(() => bezeichnungenAusCsv(csv), [csv]);
+  const bezeichnungsstand = useBezeichnungen();
+  const { bezeichnungen } = bezeichnungsstand;
 
   const ergebnis = useMemo(() => kostenermittlungBerechnen(k.eintraege), [k.eintraege]);
   const bemerkungen = useMemo(
@@ -189,35 +192,25 @@ function Editor({
     if (pruefe(a)) gehe(kostenPfad(k.projektId));
   };
 
-  const csvWaehlen = useCallback(async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const datei = e.target.files?.[0];
-    e.target.value = '';
-    if (datei === undefined) return;
-    try {
-      const text = await datei.text();
-      setCsv(text);
-      bezeichnungenMerken(text);
-      setCsvMeldung(null);
-    } catch {
-      setCsvMeldung(t.csvFehler);
-    }
-  }, []);
-
-  const csvEntfernen = (): void => {
-    setCsv(null);
-    bezeichnungenMerken(null);
-    setCsvMeldung(null);
-  };
-
   return (
     <div className="seite lv kosten">
       <div className="lv__kopf">
         <h1>{texte.editor.titel(k.name)}</h1>
         <Verweis pfad={kostenPfad(k.projektId)} text={t.zurueck} gehe={gehe} />
         <Verweis pfad={kontrollePfad(k.projektId)} text={texte.seite.zurKontrolle} gehe={gehe} />
+        <HonorarVerweise projektId={k.projektId} kostenermittlungId={k.id} gehe={gehe} />
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
+      <Werkzeugleiste beschriftung={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
+        <Werkzeuggruppe titel={texte.ausgabe.gruppe}>
+          <KostenAusgabe
+            projektId={k.projektId}
+            titel={texte.ausgabe.titelErmittlung(k.name)}
+            dateiname={(endung) => dateinameKostenermittlung(k.name, endung)}
+            bezeichnungen={bezeichnungen}
+            bericht={(kopf) => ({ art: 'ermittlung', eingabe: kostenermittlungEingabe(k, kopf) })}
+          />
+        </Werkzeuggruppe>
         <Button
           variante="gefahr"
           onClick={() => {
@@ -226,7 +219,12 @@ function Editor({
         >
           {t.loeschen}
         </Button>
-      </div>
+      </Werkzeugleiste>
+      <BezeichnungenHinweis
+        stand={bezeichnungsstand}
+        pfad={`${kostenermittlungPfad(k.projektId, k.id)}#${BEZEICHNUNGEN_ANKER}`}
+        gehe={gehe}
+      />
 
       <div className="lv__grid kosten__grid">
         <VergleichsGrid
@@ -301,20 +299,7 @@ function Editor({
         <Button type="submit">{t.kopfSpeichern}</Button>
       </form>
 
-      <h2>{t.csvTitel}</h2>
-      <p className="kosten__hinweis">{t.csvHinweis}</p>
-      <div className="kosten__datei">
-        <label>
-          {t.csvWaehlen}{' '}
-          <input type="file" accept=".csv,text/csv,text/plain" onChange={(e) => void csvWaehlen(e)} />
-        </label>
-        <Button onClick={csvEntfernen} disabled={csv === null}>
-          {t.csvEntfernen}
-        </Button>
-        <span role="status">
-          {csvMeldung ?? (bezeichnungen.size > 0 ? t.csvGelesen(bezeichnungen.size) : t.csvKeine)}
-        </span>
-      </div>
+      <BezeichnungenBereich stand={bezeichnungsstand} />
 
       <Dialog
         offen={loeschen}

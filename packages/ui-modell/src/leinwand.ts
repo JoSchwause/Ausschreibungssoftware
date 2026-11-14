@@ -6,6 +6,7 @@
 // Änderung lädt nur die geänderten Bereiche neu auf die GPU. Licht je Ecke (`schattierung.ts`). Bedienung: Maus und
 // Tastatur (`tasten.ts`).
 
+import type { IfcGlobalId } from '@tethys/vertrag';
 import {
   Box3,
   BufferAttribute,
@@ -48,7 +49,7 @@ import { Bauteilverzeichnis } from './zuordnung';
 
 export interface LeinwandRueckrufe {
   /** Klick ohne Ziehen: getroffenes Bauteil oder `null`; `ergaenzen` bei Strg bzw. Cmd */
-  readonly klick: (globalId: string | null, ergaenzen: boolean) => void;
+  readonly klick: (globalId: IfcGlobalId | null, ergaenzen: boolean) => void;
 }
 
 /** WebGL 2 ist nicht verfügbar. */
@@ -297,8 +298,8 @@ export class Leinwand {
 
   darstellung(): Darstellungsstand {
     const v = this.#verzeichnis;
-    const sichtbar = new Set<string>();
-    const hervorgehoben = new Set<string>();
+    const sichtbar = new Set<IfcGlobalId>();
+    const hervorgehoben = new Set<IfcGlobalId>();
     const farben: Record<string, string> = {};
     const farbe = new Color();
     if (v) {
@@ -327,7 +328,7 @@ export class Leinwand {
     };
   }
 
-  bildschirmpunkt(globalId: string): Bildschirmpunkt | null {
+  bildschirmpunkt(globalId: IfcGlobalId): Bildschirmpunkt | null {
     const v = this.#verzeichnis;
     if (!v) return null;
     const ziele = new Set(v.indizes(globalId));
@@ -465,7 +466,7 @@ export class Leinwand {
     this.#anfordern();
   }
 
-  #grenzenVon(globalIds: readonly string[]): Grenzen | null {
+  #grenzenVon(globalIds: readonly IfcGlobalId[]): Grenzen | null {
     const v = this.#verzeichnis;
     if (!v) return null;
     const min = [Infinity, Infinity, Infinity];

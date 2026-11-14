@@ -2,25 +2,25 @@
 // Sichtbarkeit der 3D-Ansicht (Ticket 114, X1b): Ausblenden, Isolieren, alles zeigen, je Geschoss und je Klasse. Die App hält
 // den Stand, die Leinwand zeichnet ihn (`ausgeblendet`, `isoliert` von `ui-modell`; ausgeblendet geht vor isoliert).
 
-import type { Bauwerksmodell } from '@tethys/vertrag';
+import type { Bauwerksmodell, IfcGlobalId } from '@tethys/vertrag';
 import { auswahlDerZeile } from './auswahl';
 import { texte } from './texte';
 import type { Modellbaum } from './baum';
 
 export interface Sichtbarkeit {
-  readonly ausgeblendet: readonly string[];
+  readonly ausgeblendet: readonly IfcGlobalId[];
   /** `null`: nichts isoliert. */
-  readonly isoliert: readonly string[] | null;
+  readonly isoliert: readonly IfcGlobalId[] | null;
 }
 
 export const ALLES_SICHTBAR: Sichtbarkeit = { ausgeblendet: [], isoliert: null };
 
-export function ausblenden(s: Sichtbarkeit, globalIds: readonly string[]): Sichtbarkeit {
+export function ausblenden(s: Sichtbarkeit, globalIds: readonly IfcGlobalId[]): Sichtbarkeit {
   return { ...s, ausgeblendet: [...new Set([...s.ausgeblendet, ...globalIds])] };
 }
 
 /** Nur diese Bauteile zeigen; ein früheres Ausblenden fällt weg (D-114.5). Ohne Bauteile: unverändert. */
-export function isolieren(s: Sichtbarkeit, globalIds: readonly string[]): Sichtbarkeit {
+export function isolieren(s: Sichtbarkeit, globalIds: readonly IfcGlobalId[]): Sichtbarkeit {
   if (globalIds.length === 0) return s;
   return { ausgeblendet: [], isoliert: [...new Set(globalIds)] };
 }
@@ -28,7 +28,7 @@ export function isolieren(s: Sichtbarkeit, globalIds: readonly string[]): Sichtb
 export interface Geschoss {
   readonly zeilenId: string;
   readonly name: string;
-  readonly bauteile: readonly string[];
+  readonly bauteile: readonly IfcGlobalId[];
 }
 
 /** Die Geschosse in Modellreihenfolge mit allen Bauteilen darunter (auch in ihren Räumen). */
@@ -53,6 +53,6 @@ export function klassen(modell: Bauwerksmodell): { klasse: string; anzahl: numbe
     .map(([klasse, anzahl]) => ({ klasse, anzahl }));
 }
 
-export function bauteileDerKlasse(modell: Bauwerksmodell, klasse: string): string[] {
+export function bauteileDerKlasse(modell: Bauwerksmodell, klasse: string): IfcGlobalId[] {
   return [...new Set(modell.bauteile.filter((b) => b.ifcKlasse === klasse).map((b) => b.globalId))];
 }

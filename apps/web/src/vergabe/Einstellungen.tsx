@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Einstellungen des Preisspiegels (Ticket 63, Punkt 2; G-26): Ausreißer-Schwelle, ABC-Schwelle A, Bezug der ABC-Klasse,
-// Spalten ein/aus. Sitzungszustand der Seite, nicht gespeichert (D-63.3). Die Schwellen gelten erst mit Enter oder beim
-// Verlassen des Felds: Der Preisspiegel rechnet dann einmal neu, nicht bei jedem Tastendruck.
+// Spalten ein/aus. Ticket 149 (D-73, B-29): Schwellen und Bezug stehen am LV (`PreisspiegelEinstellungenSetzen`, Undo), die
+// Spaltenwahl bleibt Sitzungszustand der Seite. Die Schwellen gelten erst mit Enter oder beim Verlassen des Felds: Der
+// Preisspiegel rechnet dann einmal neu, nicht bei jedem Tastendruck.
 
-import { formatiereProzentDe } from '@tethys/dezimal';
+import { formatiereProzentDe, vergleiche } from '@tethys/dezimal';
 import type { AbcBezug, PreisspiegelEinstellungen } from '@tethys/vergabe';
-import { Auswahl, Eingabefeld } from '@tethys/ui-basis';
+import { Auswahl, Button, Eingabefeld } from '@tethys/ui-basis';
 import type { Prozent } from '@tethys/vertrag';
 import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
@@ -18,13 +19,12 @@ const t = texte.einstellungen;
 function Schwellenfeld({
   label,
   wert,
-  art,
   onWert,
 }: {
   label: string;
   wert: Prozent;
-  art: 'ausreisser' | 'abc';
-  onWert: (p: Prozent) => void;
+  /** Gibt eine Meldung zurück, wenn der Wert zusammen mit den übrigen nicht geht (A über B). */
+  onWert: (p: Prozent) => string | null;
 }): ReactElement {
   const [text, setText] = useState(formatiereProzentDe(wert));
   const [meldung, setMeldung] = useState<string | null>(null);
@@ -32,14 +32,14 @@ function Schwellenfeld({
     setText(formatiereProzentDe(wert));
   }, [wert]);
   const uebernehmen = (): void => {
-    const r = schwelleLesen(text, art);
+    const r = schwelleLesen(text);
     if (!r.ok) {
       setMeldung(r.fehler);
       return;
     }
-    setMeldung(null);
-    setText(formatiereProzentDe(r.wert));
-    if (r.wert !== wert) onWert(r.wert);
+    const nein = r.wert === wert ? null : onWert(r.wert);
+    setMeldung(nein);
+    if (nein === null) setText(formatiereProzentDe(r.wert));
   };
   return (
     <Eingabefeld
@@ -97,28 +97,34 @@ export function Einstellungen({
   onWahl,
 }: {
   einstellungen: PreisspiegelEinstellungen;
-  onEinstellungen: (e: PreisspiegelEinstellungen) => void;
+  /** Neue Einstellungen für das LV; `null` stellt die Standardwerte her. */
+  onEinstellungen: (e: PreisspiegelEinstellungen | null) => void;
   wahl: Spaltenwahl;
   onWahl: (w: Spaltenwahl) => void;
 }): ReactElement {
+  /** A ≤ B (Glossar „Preisspiegel-Einstellungen“): sonst Meldung am Feld, nichts gesendet (U5: die Eingabe bleibt stehen). */
+  const setzen = (e: PreisspiegelEinstellungen): string | null => {
+    if (vergleiche(e.abcSchwelleA, e.abcSchwelleB) > 0) return t.aUeberB;
+    onEinstellungen(e);
+    return null;
+  };
   return (
     <fieldset className="preisspiegel__einstellungen">
       <legend>{t.gruppe}</legend>
       <Schwellenfeld
         label={t.ausreisser}
-        art="ausreisser"
         wert={einstellungen.ausreisserSchwelle}
-        onWert={(p) => {
-          onEinstellungen({ ...einstellungen, ausreisserSchwelle: p });
-        }}
+        onWert={(p) => setzen({ ...einstellungen, ausreisserSchwelle: p })}
       />
       <Schwellenfeld
         label={t.abcA}
-        art="abc"
         wert={einstellungen.abcSchwelleA}
-        onWert={(p) => {
-          onEinstellungen({ ...einstellungen, abcSchwelleA: p });
-        }}
+        onWert={(p) => setzen({ ...einstellungen, abcSchwelleA: p })}
+      />
+      <Schwellenfeld
+        label={t.abcB}
+        wert={einstellungen.abcSchwelleB}
+        onWert={(p) => setzen({ ...einstellungen, abcSchwelleB: p })}
       />
       <Auswahl
         label={t.abcBezug}
@@ -167,6 +173,14 @@ export function Einstellungen({
           }}
         />
       </div>
+      <Button
+        groesse="sm"
+        onClick={() => {
+          onEinstellungen(null);
+        }}
+      >
+        {t.standard}
+      </Button>
       <p className="preisspiegel__hinweis">{t.hinweis}</p>
     </fieldset>
   );

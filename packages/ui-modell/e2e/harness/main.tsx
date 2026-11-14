@@ -10,12 +10,13 @@
 //   anzahl=10000                                Bauteile im großen Modell
 //   thema=dark|light
 
+import type { IfcGlobalId } from '@tethys/vertrag';
 import '@tethys/ui-basis/tokens.css';
 import '../../src/modellansicht.css';
 import { StrictMode, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Modellansicht } from '../../src/index';
-import type { ModellansichtRef } from '../../src/index';
+import type { Bauteilkennzeichen, ModellansichtRef } from '../../src/index';
 import { grossesModell, ifcBytes, kleinesModell } from '../../src/testhilfe/ifc-erzeuger';
 import type { Pruefeingaben } from './global';
 
@@ -73,7 +74,7 @@ window.__modell = {
     }),
   eingaben: () => aktuell,
   darstellung: () => fertig().darstellung(),
-  punkt: (id) => fertig().bildschirmpunkt(id),
+  punkt: (id) => fertig().bildschirmpunkt(id as IfcGlobalId),
   auswahlZeigen: async () => {
     fertig().auswahlZeigen();
     await fertig().gezeichnet();
@@ -83,7 +84,7 @@ window.__modell = {
     await fertig().gezeichnet();
   },
   messePicken: async (id) => {
-    const p = fertig().bildschirmpunkt(id);
+    const p = fertig().bildschirmpunkt(id as IfcGlobalId);
     if (!p) throw new Error(`Bauteil nicht sichtbar: ${id}`);
     const committed = new Promise<void>((erfuellt) => nachCommit.push(erfuellt));
     const start = performance.now();
@@ -92,7 +93,12 @@ window.__modell = {
     await fertig().gezeichnet();
     gpuWarten();
     const dauer = performance.now() - start;
-    if (!fertig().darstellung().hervorgehoben.includes(id)) throw new Error(`nicht hervorgehoben: ${id}`);
+    if (
+      !fertig()
+        .darstellung()
+        .hervorgehoben.includes(id as IfcGlobalId)
+    )
+      throw new Error(`nicht hervorgehoben: ${id}`);
     return dauer;
   },
   renderer: () => {
@@ -109,7 +115,11 @@ function Pruefstand() {
   useEffect(() => {
     for (const f of nachCommit.splice(0)) f();
   }, [eingaben]);
-  const faerbung = useMemo(() => new Map(Object.entries(eingaben.faerbung)), [eingaben.faerbung]);
+  // Die Prüfeingaben kommen als JSON aus dem Test; die GlobalIds der Leinwand tragen die Marke des Vertrags (Ticket 155).
+  const faerbung = useMemo(
+    () => new Map(Object.entries(eingaben.faerbung) as [IfcGlobalId, Bauteilkennzeichen][]),
+    [eingaben.faerbung],
+  );
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
       <Modellansicht

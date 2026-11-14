@@ -45,7 +45,8 @@ import type {
 } from '@tethys/vertrag';
 import { aufmassBefehlAnwenden, neuesBlatt } from '../abrechnung/aufmass';
 import { zuschlagserteilungPlanen } from '../auftrag/zuschlagserteilung';
-import { namensvorschlag, tagDesEinlesens, type Lesen } from '../bim/einlesen';
+import { datumAusUhr } from '../ausgabe/logik';
+import { namensvorschlag, type Lesen } from '../bim/einlesen';
 import { bauwerksmodellBefehlAnwenden } from '../bim/schreiben';
 import type { Teil } from '../historie/historie';
 import {
@@ -387,7 +388,7 @@ export async function beispielprojektAnlegen(
     name: namensvorschlag(quelle.modell.dateiname),
     datei: { hash: '', dateiname: quelle.modell.dateiname, groesse: quelle.modell.bytes.length },
     vorgaengerId: null,
-    eingelesen: tagDesEinlesens(u.uhr()),
+    eingelesen: datumAusUhr(u.uhr()),
   });
 
   const weg = befehlswegFuer(u);

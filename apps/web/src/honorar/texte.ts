@@ -97,6 +97,11 @@ export const befundTexte = {
 
 export const texte = {
   projekt: { honorar: 'Honorar' },
+  // Ticket 155: Verweise zwischen Honorar und Kostenermittlung, beide Richtungen
+  verweis: {
+    zumHonorar: (name: string): string => `Zum Honorar „${name}“`,
+    zurKostenermittlung: (name: string): string => `Zur Kostenermittlung „${name}“`,
+  },
   vorgaben: {
     basis: 'Basishonorarsatz',
     viertel: 'Viertelsatz',

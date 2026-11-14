@@ -1,37 +1,42 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Adressen der Kostenseiten und das Ziel nach Rückgängig/Wiederholen einer Kostenermittlung (Ticket 89). Ohne
-// Abhängigkeit auf Kern oder Speicher, damit die Hülle sie billig importiert (wie `auftrag/ziel.ts`).
+// Adressen der Kostenseiten und das Ziel nach Rückgängig/Wiederholen einer Kostenermittlung (Ticket 89), seit Ticket 154
+// aus dem Pfadbaukasten (D-131.1); die Kostenkontrolle ist eine eigene Regel vor der Liste. Ohne Abhängigkeit auf Kern oder
+// Speicher, damit die Hülle sie billig importiert.
 
 import type { Aenderung, Kostenermittlung, KostenermittlungId, ProjektId } from '@tethys/vertrag';
+import { projektliste, type Listenroute } from '../ui/pfade';
+
+const ermittlungen = projektliste<'ermittlung', KostenermittlungId>('kosten', 'ermittlung');
 
 /** Liste der Kostenermittlungen eines Projekts. */
-export function kostenPfad(projektId: ProjektId): string {
-  return `/projekt/${projektId}/kosten`;
-}
+export const kostenPfad = ermittlungen.liste;
 
 /** Eine Kostenermittlung im Editor. */
-export function kostenermittlungPfad(projektId: ProjektId, id: KostenermittlungId): string {
-  return `/projekt/${projektId}/kosten/${id}`;
-}
+export const kostenermittlungPfad = ermittlungen.einzeln;
 
 /** Die Kostenkontrolle des Projekts. */
 export function kontrollePfad(projektId: ProjektId): string {
-  return `/projekt/${projektId}/kosten/kontrolle`;
+  return `${kostenPfad(projektId)}/kontrolle`;
+}
+
+/** Anker des Abschnitts „Bezeichnungen der Kostengruppen“ auf der Liste der Kostenermittlungen (B-14). */
+export const BEZEICHNUNGEN_ANKER = 'bezeichnungen';
+
+/** Die Liste der Kostenermittlungen, dort der Abschnitt zum Einlesen der Bezeichnungen der Kostengruppen. */
+export function bezeichnungenPfad(projektId: ProjektId): string {
+  return `${kostenPfad(projektId)}#${BEZEICHNUNGEN_ANKER}`;
 }
 
 export type KostenRoute =
-  | { readonly art: 'liste'; readonly projektId: ProjektId }
-  | { readonly art: 'kontrolle'; readonly projektId: ProjektId }
-  | { readonly art: 'ermittlung'; readonly projektId: ProjektId; readonly id: KostenermittlungId };
+  | Listenroute<'ermittlung', KostenermittlungId>
+  | { readonly art: 'kontrolle'; readonly projektId: ProjektId };
 
 /** Erkennt einen Pfad der Kostenseiten; `null`, wenn er keiner ist. */
 export function kostenRoute(pfad: string): KostenRoute | null {
-  const m = /^\/projekt\/([^/]+)\/kosten(?:\/([^/]+))?$/.exec(pfad);
-  if (m?.[1] === undefined) return null;
-  const projektId = decodeURIComponent(m[1]) as ProjektId;
-  if (m[2] === undefined) return { art: 'liste', projektId };
-  if (m[2] === 'kontrolle') return { art: 'kontrolle', projektId };
-  return { art: 'ermittlung', projektId, id: decodeURIComponent(m[2]) as KostenermittlungId };
+  const r = ermittlungen.route(pfad);
+  if (r?.art === 'ermittlung' && (r.id as string) === 'kontrolle')
+    return { art: 'kontrolle', projektId: r.projektId };
+  return r;
 }
 
 /**
@@ -44,9 +49,5 @@ export function kostenZiel(
   rueckwaerts: boolean,
   pfad: string,
 ): string | null {
-  const nachher = rueckwaerts ? cs.kostenermittlung.vorher : cs.kostenermittlung.nachher;
-  const k = nachher ?? (rueckwaerts ? cs.kostenermittlung.nachher : cs.kostenermittlung.vorher);
-  if (k === null) return null;
-  const ziel = nachher !== null ? kostenermittlungPfad(projektId, k.id) : kostenPfad(projektId);
-  return ziel === pfad ? null : ziel;
+  return ermittlungen.ziel(projektId, cs.kostenermittlung, rueckwaerts, pfad);
 }
