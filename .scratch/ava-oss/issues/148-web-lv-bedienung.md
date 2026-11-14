@@ -1,6 +1,6 @@
 # 148: App: LV-Bedienung (Hinweistext, OZ-Maske, Texte, KG-Hinweis)
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: U, E8 · Paket/Ordner: `apps/web/src/lv/`
 Blocked by: 137, 139, 142
@@ -21,10 +21,10 @@ Herkunft: umfang §3 E8 (LV-Teil), B-15, B-26; Ticket 124 Punkt 3
 
 ## Acceptance criteria
 
-- [ ] E2E für 1–4
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] E2E für 1–4
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -58,3 +58,16 @@ Entscheidungen im Demo-Modus (Branch `welle-7/148-lv-bedienung`):
   Die App kann eine Kalkulation heute noch nicht speichern (Kalkulationsdialog setzt EP und Anteile); die E2E lädt eine Position
   mit Kalkulation über den Testpfad.
 - **D-148.7** Punkt 5 (B-25) → nichts geändert: Der Text in `lv/texte.ts` („Dieses Projekt ist schon vorhanden.“) gehört zu 150.
+
+Ergebnis (nach `git merge integration/welle-7`, Stand `f3532af`):
+
+- `pnpm lint` und `pnpm typecheck` grün; Sprachtest grün.
+- `pnpm test`: 4.433 bestanden, 3 übersprungen, 12 rot, nur CPU-Budgets in `gaeb`, `kern`, `speicher`, `vergabe` und
+  `apps/web/src/abrechnung/leistung.test.ts` bei Last 21–26 (andere Agenten); keine davon von 148 berührt. Bei Last 1 liefen
+  `speicher/v16-leistung` und `abrechnung/leistung` allein grün. Keine Schranke geändert.
+- E2E: `lv-bedienung` (neu, 4), `umwege`, `arbeitsflaeche` (Ziel aus 142: 15 Zeilen mit EP und GP bei 1280×800), `lv`,
+  `dialog`, `undo`: 27/27 grün; `kosten.spec.ts` fiel im Sammellauf einmal am Undo der KG im Auftrags-LV (nicht berührt), allein
+  grün.
+
+Folgepunkte (fremde Pakete, P2): `ui-grid` hat keinen Text für den Hinweis `kalkulation-entfernt` (die LV-Seite filtert ihn aus
+der Hinweisleiste); die Kalkulation lässt sich in der App noch nicht speichern (Kalkulationsdialog in `kosten/`).
