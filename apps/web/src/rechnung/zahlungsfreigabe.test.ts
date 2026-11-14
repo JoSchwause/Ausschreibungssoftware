@@ -111,7 +111,7 @@ describe('Zahlungsfreigabe gegen typisch-zahlungen', () => {
       ['Offen', '0.00'],
     ]);
     expect(zf.zahlungen.map((z) => [z.datum, z.betrag])).toEqual([['2026-11-13', '7316.94']]);
-    expect(ar1).toMatchObject({ skonto: fx1.skonto, bauabzugsteuer: true, zahlungen: fx1.zahlungen.map((z) => ({ datum: z.datum, betrag: z.betrag })) });
+    expect(ar1).toMatchObject({ skonto: fx1.skonto, bauabzugsteuer: true, zahlungen: fx1.zahlungen });
   });
 
   it('AR 1 mit Zahlung: „Freigabe aufheben“ gesperrt mit Erklärung (Q5, D-128.7)', async () => {
