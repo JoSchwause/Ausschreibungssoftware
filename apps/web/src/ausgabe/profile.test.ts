@@ -17,6 +17,7 @@ import {
   profilGleich,
   profilImportieren,
   profilLoeschen,
+  profilNachLoeschen,
   zeilenLesen,
 } from './profile';
 
@@ -85,6 +86,14 @@ describe('Anlegen, Ändern, Löschen', () => {
   it('Löschen nimmt nur das benannte Profil', () => {
     expect(profilLoeschen([mein('A'), mein('B')], 'A').map((p) => p.name)).toEqual(['B']);
     expect(profilLoeschen([mein('A')], 'X').map((p) => p.name)).toEqual(['A']);
+  });
+  // Ticket 162 (U3): Nach dem Löschen gilt das nächste eigene Profil, am Ende das vorige, ohne weitere „Auftrags-LV mit Preisen“.
+  it('Nach dem Löschen: nächstes eigenes Profil, sonst das vorige, sonst das Standardprofil', () => {
+    const eigene = [mein('A'), mein('B'), mein('C')];
+    expect(profilNachLoeschen(w, eigene, 'B').name).toBe('C');
+    expect(profilNachLoeschen(w, eigene, 'C').name).toBe('B');
+    expect(profilNachLoeschen(w, [mein('A')], 'A').name).toBe('Auftrags-LV mit Preisen');
+    expect(profilNachLoeschen(w, eigene, 'X').name).toBe('Auftrags-LV mit Preisen');
   });
 });
 

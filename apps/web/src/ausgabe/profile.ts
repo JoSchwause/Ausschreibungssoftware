@@ -123,6 +123,23 @@ export function profilAendern(
 export const profilLoeschen = (eigene: readonly Druckprofil[], name: string): Druckprofil[] =>
   eigene.filter((p) => p.name !== name);
 
+/** Das Standardprofil „Auftrags-LV mit Preisen“ (= Druck wie bisher). */
+export function standardProfil(w: Werkzeug): Druckprofil {
+  const p = w.STANDARD_DRUCKPROFILE[2] ?? w.STANDARD_DRUCKPROFILE[0];
+  if (p === undefined) throw new Error('Kein Standardprofil vorhanden.');
+  return p;
+}
+
+/**
+ * Ticket 162 (U3): Was nach dem Löschen von `name` gewählt ist: das nächste eigene Profil, am Ende der Liste das vorige,
+ * ohne weitere eigene Profile das Standardprofil.
+ */
+export function profilNachLoeschen(w: Werkzeug, eigene: readonly Druckprofil[], name: string): Druckprofil {
+  const i = eigene.findIndex((p) => p.name === name);
+  if (i < 0) return standardProfil(w);
+  return eigene[i + 1] ?? eigene[i - 1] ?? standardProfil(w);
+}
+
 /** Ein freier Name: `name`, sonst `name (2)`, `name (3)` … gegen Standard- und eigene Profile. */
 export function freierName(w: Werkzeug, eigene: readonly Druckprofil[], name: string): string {
   const grund = name.trim() === '' ? 'Profil' : name.trim();
