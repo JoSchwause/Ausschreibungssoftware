@@ -9,7 +9,7 @@
 // zeigt den Befund (U5, `nachtragsbefunde`).
 
 import { nachtragsbefunde, type Nachtragsbefund } from '@tethys/abrechnung';
-import { auftragsLvBefehlAusfuehren } from '@tethys/kern';
+import { auftragsLvBefehlAusfuehren } from '@tethys/vergabe'; // D-98: Bieter- und Zuschlagsbefehle über die Vergabe
 import type {
   Angebot,
   AuftragsLeistungsverzeichnisId,
