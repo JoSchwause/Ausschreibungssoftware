@@ -33,7 +33,9 @@ export type Befundwerte = Readonly<Record<string, Befundwert>>;
  * - `gesamtpreis-abweichend`, `gp-abweichend`: `datei`, `gerechnet` (Betrag); `bietermenge-nicht-abgebildet`: `bietermenge`,
  *   `lvMenge` (Menge);
  * - Zahlen der Datei (`dezimal-ungueltig`, `dezimalkomma`, `gerundet` …): `wert` (Text: der Wert, wie er in der Datei steht);
- * - zusammengefasste Befunde (`formatierung-verworfen`, `epa-nicht-abgebildet`, `zeile-laenge` …): `anzahl`.
+ * - zusammengefasste Befunde (`formatierung-verworfen`, `epa-nicht-abgebildet`, `zeile-laenge` …): `anzahl`;
+ * - GAEB 90 (Ticket 144): `format-ungeprueft`: `format` (Text); `zeichensatz-erkannt`: `zeichensatz` (Text in Worten);
+ *   `satzart-unbekannt`: `satzart` (Text), `anzahl`; `satz-laenge`, `satznummer-abweichend`: `anzahl`.
  *
  * Ein Wert, der sich nicht als Zahl lesen lässt, steht als Text da.
  */
@@ -56,6 +58,13 @@ export const BEFUNDTEXTE = {
   'phase-widerspruch': 'Angaben zur Austauschphase widersprechen sich',
   'phase-endung-widerspruch': 'Dateiendung passt nicht zur Austauschphase',
   'befunde-begrenzt': 'Weitere Befunde ausgelassen',
+  // Ältere Formate (GAEB 90; Ticket 144, D-71)
+  'format-ungeprueft': 'Nicht an Dateien aus anderer Software geprüft, Summen vergleichen',
+  'zeichensatz-erkannt': 'Zeichensatz am Inhalt erkannt',
+  'satzart-unbekannt': 'Unbekannte Satzart nicht übernommen',
+  'satz-laenge': 'Satz mit falscher Länge',
+  'satznummer-abweichend': 'Satznummern nicht fortlaufend',
+  'gliederungsende-abweichend': 'Ende einer Gliederung passt nicht',
   // Aufbau der Datei
   'xml-keine-wurzel': 'Kein lesbarer Inhalt',
   'xml-tag-nicht-geschlossen': 'Abschnitt nicht geschlossen',
