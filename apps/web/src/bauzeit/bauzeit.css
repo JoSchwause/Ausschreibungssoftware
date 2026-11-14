@@ -156,3 +156,27 @@
   flex-wrap: wrap;
   gap: var(--tx-space-3);
 }
+
+/* Ticket 155: Wahl einzelner Knoten des Bezugs und Vorschlag des Fortschritts */
+.bauzeit__knotenwahl {
+  grid-column: 1 / -1;
+}
+
+.bauzeit__knoten {
+  max-height: 240px;
+  overflow: auto;
+  margin: 0;
+  padding: var(--tx-space-2);
+  border: 1px solid var(--tx-color-border);
+  list-style: none;
+}
+
+.bauzeit__knoten label {
+  display: flex;
+  gap: var(--tx-space-2);
+  align-items: center;
+}
+
+.bauzeit__vorschlag {
+  margin: var(--tx-space-2) 0 0;
+}

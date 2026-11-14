@@ -3,7 +3,7 @@
 // einer Zuordnung ein Sprung zur Position (Ticket 122, PC-a1: auch für eine hängende Zuordnung, deren Bauteil keine Zeile hat).
 
 import { Button } from '@tethys/ui-basis';
-import type { KnotenId, Pruefbefund } from '@tethys/vertrag';
+import type { IfcGlobalId, KnotenId, Pruefbefund } from '@tethys/vertrag';
 import type { ReactElement } from 'react';
 import { befundliste, befundzusammenfassung } from './befunde';
 import { texte } from './texte';
@@ -18,7 +18,7 @@ export function BefundListe({
   befunde: readonly Pruefbefund[];
   beschriftung: string;
   /** Ohne: kein Sprung (z. B. im Dialog des Einlesens). */
-  onSprung?: (globalId: string) => void;
+  onSprung?: (globalId: IfcGlobalId) => void;
   /** Ticket 115: Sprung nur zu Objekten, die im Baum stehen (eine hängende Zuordnung hat keine Zeile). Ohne: alle. */
   imModell?: (globalId: string) => boolean;
   /** Ticket 122: Sprung zur Position einer Zuordnung (`ort.knotenId`). Ohne: kein Sprung zur Position. */

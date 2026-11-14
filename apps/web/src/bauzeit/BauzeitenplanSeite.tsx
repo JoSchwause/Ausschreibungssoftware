@@ -5,7 +5,7 @@
 // Termine rechnet `bauzeit` bei jedem Stand neu, gespeichert werden nur die Eingaben (D-57).
 
 import { bauzeitenplanBerechnen } from '@tethys/bauzeit';
-import { Button, Dialog } from '@tethys/ui-basis';
+import { Button, Dialog, Tastenkuerzel } from '@tethys/ui-basis';
 import { VergleichsGrid, type VergleichsSprungziel } from '@tethys/ui-grid';
 import type { BauzeitenplanId, BauzeitenplanZustand, ProjektId, VorgangId } from '@tethys/vertrag';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
@@ -23,9 +23,11 @@ import {
   vorgangEntfernenBefehl,
   vorgangEntfernenFrage,
   vorgangSetzenBefehl,
+  vorgangVerschiebenBefehl,
   vorgangsentwurf,
   type Feldfehler,
   type Kopfentwurf,
+  type Verschieberichtung,
   type Vorgangsentwurf,
 } from './befehle';
 import { KopfFelder } from './KopfFelder';
@@ -174,6 +176,16 @@ function Editor({
     return null;
   };
 
+  // Ticket 155 (D-118.3): innerhalb der Ebene verschieben, ein Undo-Schritt; die Zeile bleibt aktiv.
+  const verschiebbar = (richtung: Verschieberichtung): boolean =>
+    aktiverVorgang !== null && vorgangVerschiebenBefehl(plan, aktiverVorgang.id, richtung) !== null;
+  const verschieben = async (richtung: Verschieberichtung): Promise<void> => {
+    if (aktiverVorgang === null) return;
+    const b = vorgangVerschiebenBefehl(plan, aktiverVorgang.id, richtung);
+    if (b === null) return;
+    if (pruefe(await sitzung.befehl(b))) springe(b.vorgang.id);
+  };
+
   const entfernen = async (vorgangId: VorgangId): Promise<void> => {
     setFrage({ art: 'keine' });
     pruefe(await sitzung.befehl(vorgangEntfernenBefehl(vorgangId)));
@@ -246,6 +258,20 @@ function Editor({
         <Button disabled={aktiverVorgang === null} onClick={entfernenFragen}>
           {t.vorgangEntfernen}
         </Button>
+        <Button
+          disabled={!verschiebbar('hoch')}
+          aria-keyshortcuts="Alt+ArrowUp"
+          onClick={() => void verschieben('hoch')}
+        >
+          {t.nachOben} <Tastenkuerzel tasten={t.tastenNachOben} />
+        </Button>
+        <Button
+          disabled={!verschiebbar('runter')}
+          aria-keyshortcuts="Alt+ArrowDown"
+          onClick={() => void verschieben('runter')}
+        >
+          {t.nachUnten} <Tastenkuerzel tasten={t.tastenNachUnten} />
+        </Button>
         <PlanDrucken plan={plan} ergebnis={ergebnis} projekt={projekt} />
         <Button
           variante="gefahr"
@@ -258,7 +284,17 @@ function Editor({
       </div>
 
       <div className="bauzeit__haupt">
-        <div className="bauzeit__grid">
+        <div
+          className="bauzeit__grid"
+          onKeyDownCapture={(e) => {
+            // Ticket 155 (U3): Alt+↑/↓ verschiebt den aktiven Vorgang wie im LV die Position.
+            if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+            e.preventDefault();
+            e.stopPropagation();
+            void verschieben(e.key === 'ArrowUp' ? 'hoch' : 'runter');
+          }}
+        >
           {plan.vorgaenge.length === 0 ? <p>{t.leer}</p> : null}
           <VergleichsGrid
             beschriftung={t.grid}
@@ -373,7 +409,7 @@ function BefundPanel({
         .map((g) => (
           <section key={g.schwere}>
             <h3>
-              {g.schwere === 'fehler' ? 'Fehler' : 'Warnungen'} ({String(g.eintraege.length)})
+              {b.schwere[g.schwere]} ({String(g.eintraege.length)})
             </h3>
             <ul>
               {g.eintraege.map((e, i) => (

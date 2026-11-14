@@ -11,7 +11,13 @@ import { VergleichsGrid } from '@tethys/ui-grid';
 import { Modellansicht } from '@tethys/ui-modell';
 import type { Ladebericht, ModellansichtRef } from '@tethys/ui-modell';
 import '@tethys/ui-modell/modellansicht.css';
-import type { BauwerksmodellId, BauwerksmodellZustand, ProjektId, Pruefbefund } from '@tethys/vertrag';
+import type {
+  BauwerksmodellId,
+  BauwerksmodellZustand,
+  IfcGlobalId,
+  ProjektId,
+  Pruefbefund,
+} from '@tethys/vertrag';
 import { formatiereMengeDe } from '@tethys/dezimal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
@@ -34,7 +40,7 @@ import { BAUM_SPALTEN, globalIdDerZeile, modellbaumBauen, sichtbareZeilen } from
 import { BefundListe } from './BefundListe';
 import { geometriebefunde } from './befunde';
 import { IfcArbeiter } from './ifc-arbeiter';
-import { modellePfad } from './pfad';
+import { auftragAusAdresse, modellePfad } from './pfad';
 import { bauwerksmodellLaden } from './schreiben';
 import {
   ALLES_SICHTBAR,
@@ -50,7 +56,7 @@ import { texte as vergleichTexte } from '../modellvergleich/texte'; // Ticket 11
 import { modellTesthaken } from './testhaken';
 import { ifcKlassenName, texte } from './texte';
 import { KennwerteBereich } from './KennwerteBereich'; // Ticket 115
-import { useBezug } from './useBezug'; // Ticket 115
+import { auftragSchluessel, useZuordnungsLv } from './zuordnungsLv'; // Ticket 115
 import { ZuordnungBereich } from './ZuordnungBereich'; // Ticket 115
 import { zuordnungsfaerbung } from './zuordnung'; // Ticket 115
 import '../lv/lv.css';
@@ -66,7 +72,7 @@ type Eigenschaftslage =
   | { art: 'laedt'; globalId: string }
   | { art: 'da'; globalId: string; wert: Objekteigenschaften | null };
 
-const KEINE_FAERBUNG: ReadonlyMap<string, never> = new Map<string, never>();
+const KEINE_FAERBUNG: ReadonlyMap<IfcGlobalId, never> = new Map<IfcGlobalId, never>();
 
 export function ModellSeite({
   projektId,
@@ -130,10 +136,15 @@ function Arbeitsflaeche({
   const [klasse, setKlasse] = useState<string | undefined>(undefined);
   const ansicht = useRef<ModellansichtRef | null>(null);
   // Ticket 115: Bezugs-LV der Zuordnung; die 3D-Ansicht färbt „zugeordnet“/„ohne Zuordnung“ bezogen auf dieses LV.
-  const bezug = useBezug(projektId);
+  // Ticket 155: „Aufmaß aus Modell“ wählt das Auftrags-LV über die Adresse vor.
+  const [vorwahl] = useState(() => {
+    const a = auftragAusAdresse(window.location.search);
+    return a === null ? undefined : auftragSchluessel(a);
+  });
+  const zuordnungsLv = useZuordnungsLv(projektId, vorwahl);
   const faerbung = useMemo(
-    () => (bezug.bezug === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, bezug.knoten)),
-    [bezug.bezug, bezug.knoten, modell],
+    () => (zuordnungsLv.lv === null ? KEINE_FAERBUNG : zuordnungsfaerbung(modell, zuordnungsLv.knoten)),
+    [zuordnungsLv.lv, zuordnungsLv.knoten, modell],
   );
   // Woher der nächste Wechsel der aktiven Zeile kommt: Ein Klick wählt (Strg/Cmd+Klick ergänzt, Ticket 115), eine Taste bewegt
   // nur den Fokus (Ticket 122, U3: Leertaste und Strg+Leertaste wählen).
@@ -175,7 +186,7 @@ function Arbeitsflaeche({
   }, [fokus, bytes]);
 
   const onAuswahl = useCallback(
-    (ids: readonly string[], art: { readonly hinzufuegen: boolean }) => {
+    (ids: readonly IfcGlobalId[], art: { readonly hinzufuegen: boolean }) => {
       setStand((s) => beiKlick3d(s, baum, ids, art.hinzufuegen));
     },
     [baum],
@@ -187,7 +198,7 @@ function Arbeitsflaeche({
     [modell],
   );
   const zurZeile = useCallback(
-    (globalId: string) => {
+    (globalId: IfcGlobalId) => {
       setStand((s) => beiKlick3d(s, baum, [globalId], false));
     },
     [baum],
@@ -426,7 +437,7 @@ function Arbeitsflaeche({
           projektId={projektId}
           modell={modell}
           auswahl={stand.auswahl}
-          bezug={bezug}
+          zuordnungsLv={zuordnungsLv}
           zurZeile={zurZeile}
           gehe={gehe}
         />

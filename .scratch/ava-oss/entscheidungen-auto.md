@@ -849,3 +849,17 @@ Question: (1) Der Typcheck erzwang zwei Fälle und zwei Texte in `apps/web/src/r
 Decision: (1) Bestätigt als mechanische Folgezeilen; 152 prüft den Wortlaut. (2) Bestätigt: Migration 7 ist noch nicht auf `main`, die Datei gilt erst ab dem Merge der Welle als eingefroren. (3) Steht schon in D-72 als Risiko; die Seite „Annahmen“ (147) nennt es, sonst ergänzt 159 den Satz. Für 153: die Kette trägt jetzt eine Zeile `vertragsstrafe` zwischen Umlagen und Einbehalt (D-143.6). Für 152: `vertragsstrafeVorschlag` füllt neue Rechnungen (D-143.5).
 Reason: Keine Regel verletzt; Sollwerte unabhängig hergeleitet (C4), M4-Goldens unverändert.
 Reversible: yes  Touches: packages/abrechnung, speicher, fixtures, apps/web/src/rechnung
+
+## D-98 Vergabe- und Kostenseiten gemergt; Reste
+Welle 7 · Tickets 149, 154 (Folge 152, 159) · decided by: orchestrator
+Question: 149 begrenzt die Ausreißer-Schwelle auf 100 % (der Kern weist mehr ab, v1.7a; eine Zeile in `preisspiegel.spec.ts` von 200 auf 100), baut eine eigene PDF-Vorschau `PdfMitVorschau`; 154 speichert die Kalkulation, Kostenberichte mit Vorschau.
+Decision: Beides bestätigt. 100 % als Obergrenze ist eine Lesart von G-26 (Ausreißer ±%), keine Lockerung eines Tests; eine höhere Schwelle bräuchte eine Vertragsänderung und kommt nur auf Anfrage des Büros. **An 152:** `PdfMitVorschau` aus `vergabe/Ausgaben.tsx` wiederverwenden (Import genügt; Umzug nach `ui/` in 159). **Für 159:** `auftragsLvBefehlAusfuehren` in `auftrag/`, `kosten/`, `nachtrag/`, `hilfe/` aus `@tethys/vergabe` statt `@tethys/kern`; `PdfMitVorschau` nach `ui/` und im LV-PDF nutzen; Druckprofil- und Datumswahl für Preisspiegel-, Vergabevorschlags- und Kostenberichte; `lv-bedienung.spec.ts` lädt die Kalkulation über den echten Dialog statt den Testhaken. **Bericht:** Die Tabelle der Angebotspreise ist nicht virtualisiert (langsam bei 5.000 Positionen).
+Reason: Keine Regel verletzt; Reste sind klein.
+Reversible: yes  Touches: apps/web/src/vergabe, kosten, Tickets 152, 159
+
+## D-99 Vorschau-Module gemergt; Doppelmessung je Position; Kann-Teile gekürzt
+Welle 7 · Ticket 155 (Folge 158, 159, Bericht) · decided by: orchestrator
+Question: 155 hat Punkte 1–5 und 7 erledigt, Punkt 6 (K-Teile: „Mangel aus Bauteil“, „KG im Modell weicht ab“) nach der Kürzungsreihenfolge gestrichen; den Hinweis „schon auf einem anderen Aufmaßblatt gemessen“ gibt es je Position, nicht je Bauteil (dafür bräuchte `Ansatzzeile` eine GlobalId, also `vertrag`); Einzeiler in fremden Ordnern (`kosten/KostenermittlungSeite`, `auftrag/AuftragsLvSeite`, `hilfe/beispielprojekt`, D-155.2); `bim-tastatur.spec.ts:135` bleibt wackelig ohne gefundene Ursache in der App (Radix verschiebt den Fokus in einem `setTimeout`, der unter Last über eine Sekunde nicht lief).
+Decision: Alles bestätigt. Die Einzeiler sind Einhängestellen, keine Fachänderung. Die Kürzung von Punkt 6 und die Doppelmessung je Bauteil (Vertragsänderung) stehen im Bericht unter „nach Welle 7“. Der wackelige Test wird im Abschlusslauf auf ruhiger Maschine geprüft; fällt er dort weiter, untersucht 159 das Auswahlfeld in `ui-basis`. Die Messung des Preisspiegel-Budgets auf ruhiger Maschine gehört in den Abschlusslauf.
+Reason: Kürzungsreihenfolge §4; ohne Last gibt es keinen Befund, der eine Änderung rechtfertigt.
+Reversible: yes  Touches: apps/web/src/{bauzeit,bauleitung,honorar,bim,modellvergleich}, packages/bim, ui-modell, Bericht

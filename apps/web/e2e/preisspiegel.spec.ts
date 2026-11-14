@@ -152,9 +152,10 @@ test('Ausreißer und „nicht angeboten“ sichtbar und per Tastatur erreichbar;
   await expect(page.locator(':focus')).toHaveAccessibleDescription(/nicht angeboten/);
   await expect(detail(page)).toContainText('Nicht angeboten');
 
-  // Bei drei Bietern liegt kein Preis > 0 mehr als 200 % über oder 100 % unter dem Mittel: keine Ausreißer mehr.
+  // Kein Preis > 0 der Fixture liegt mehr als 100 % über oder unter dem Mittel: keine Ausreißer mehr. (Ticket 149: Die
+  // Schwelle steht am LV, und der Befehl lässt höchstens 100 % zu; vorher stand hier 200.)
   const schwelle = page.getByLabel('Ausreißer-Schwelle');
-  await schwelle.fill('200');
+  await schwelle.fill('100');
   await schwelle.press('Enter');
   await expect(grid(page).locator('[data-kennzeichen="hoch"], [data-kennzeichen="niedrig"]')).toHaveCount(0);
   await zurZelle(page, '02.0050', 'Bieter C', 'ep');

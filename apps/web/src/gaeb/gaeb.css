@@ -128,3 +128,58 @@
 .gaeb__tabelle td:first-child {
   text-align: left;
 }
+
+/* Ticket 149: Angebot bearbeiten und löschen, Bieterangaben übernehmen. */
+.gaeb__aktionen {
+  display: flex;
+  gap: var(--tx-space-1);
+  justify-content: flex-end;
+}
+
+.gaeb__angebot {
+  display: grid;
+  gap: var(--tx-space-2);
+}
+
+.gaeb__nachlass {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--tx-space-2) var(--tx-space-4);
+}
+
+.gaeb__preise {
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.gaeb__tabelle td.gaeb__kurztext {
+  text-align: left;
+}
+
+.gaeb__preis {
+  width: 9em;
+  font: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 0 var(--tx-space-1);
+  border: 1px solid var(--tx-color-border);
+  border-radius: var(--tx-radius-sm, var(--tx-radius-md));
+  background: var(--tx-color-surface);
+  color: inherit;
+}
+
+.gaeb__preis[aria-invalid='true'] {
+  border-color: var(--tx-color-danger, currentColor);
+}
+
+.gaeb__feldmeldung {
+  display: block;
+  color: var(--tx-color-danger, inherit);
+}
+
+.gaeb__schalter {
+  display: flex;
+  gap: var(--tx-space-1);
+  align-items: center;
+}
