@@ -147,10 +147,7 @@ function PdfMitVorschau({
         fuss={
           <>
             <Button onClick={schliessen}>{lage.art === 'laeuft' ? t.abbrechen : t.schliessen}</Button>
-            <Button
-              disabled={lage.art === 'laeuft' || !gelesen.ok}
-              onClick={() => void erzeugen()}
-            >
+            <Button disabled={lage.art === 'laeuft' || !gelesen.ok} onClick={() => void erzeugen()}>
               {t.vorschauErzeugen}
             </Button>
             <Button
@@ -233,7 +230,7 @@ export function Vergabevorschlag({ stand }: { stand: AusgabeStand }): ReactEleme
     ...stand.preisspiegel.bietersummen
       .map((s) => stand.projekt.bieter.find((b) => b.id === s.bieterId))
       .filter((b) => b !== undefined)
-      .map((b) => ({ wert: b.id as string, label: b.name })),
+      .map((b) => ({ wert: b.id, label: b.name })),
   ];
   return (
     <PdfMitVorschau

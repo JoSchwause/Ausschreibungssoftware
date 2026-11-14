@@ -8,12 +8,14 @@ import { angebotChangeSetAnwenden, bieterLoeschen, zuschlagZuruecknehmen } from 
 import { angebotBefehlAusfuehrer } from '@tethys/vergabe';
 import { projektChangeSetAnwenden } from '@tethys/kern';
 import type {
+  Angebot,
   AngebotBefehl,
   AngebotId,
   AngebotZustand,
   AuftragsLeistungsverzeichnisId,
   AuftragsLvZustand,
   Betrag,
+  Bieterangaben,
   BieterId,
   Ergebnis,
   LvZustand,
@@ -25,7 +27,14 @@ import type {
   Verweisanzahl,
 } from '@tethys/vertrag';
 import type { Teil } from '../historie/historie';
-import { eintrag, speichern, type Abweisung, type Ausgang, type Befehlsweg } from '../lv/befehlsweg';
+import {
+  eintrag,
+  projektBefehlAnwenden,
+  speichern,
+  type Abweisung,
+  type Ausgang,
+  type Befehlsweg,
+} from '../lv/befehlsweg';
 
 type Lesung<T> = Ergebnis<T, Speicherfehler>;
 
@@ -66,11 +75,47 @@ export function angebotAendern(
         const vorher: AngebotZustand | null = stand;
         const e = eintrag(u, kopf.projektId, { art: 'angebot', id: angebotId }, befehl);
         const cs = r.wert;
-        const s = await speichern(u, e, cs, (): AngebotZustand | null => angebotChangeSetAnwenden(vorher, cs));
+        const s = await speichern(u, e, cs, (): AngebotZustand | null =>
+          angebotChangeSetAnwenden(vorher, cs),
+        );
         if (!s.ok) return s;
         teile.push(s.teil);
         stand = s.zustand;
       }
+      return { ok: true, zustand: stand, hinweise: [] };
+    } finally {
+      weg.historie.aufnehmen(teile);
+    }
+  });
+}
+
+/**
+ * Ein Angebot eines vorhandenen Bieters anlegen und dabei die Bieterangaben aus der Datei übernehmen (X84, D-82 S7): erst
+ * `BieterangabenSetzen`, dann `AngebotAnlegen`, **ein** Undo-Schritt wie `Befehlsweg.angebotAnlegen`. Wird das Angebot
+ * abgewiesen, bleiben die Angaben gesetzt und sind einzeln rückgängig zu machen.
+ */
+export function angebotMitBieterangabenAnlegen(
+  weg: Befehlsweg,
+  projekt: Projekt,
+  lv: LvZustand,
+  angebot: Angebot,
+  angaben: { readonly bieterId: BieterId; readonly angaben: Bieterangaben },
+): Promise<Ausgang<Projekt>> {
+  const u = weg.umgebung;
+  return weg.reihe(async (): Promise<Ausgang<Projekt>> => {
+    const teile: Teil[] = [];
+    try {
+      const a = await projektBefehlAnwenden(u, projekt, { art: 'BieterangabenSetzen', ...angaben });
+      if (!a.ok) return a;
+      teile.push(a.teil);
+      const stand = a.zustand ?? projekt;
+      const befehl = { art: 'AngebotAnlegen', angebot } as const;
+      const r = angebotBefehlAusfuehrer(stand, lv)(null, befehl);
+      if (!r.ok) return { ok: false, abweisung: { art: 'befehl', fehler: r.fehler } };
+      const e = eintrag(u, stand.id, { art: 'angebot', id: r.wert.angebotId }, befehl);
+      const s = await speichern(u, e, r.wert, () => stand);
+      if (!s.ok) return s;
+      teile.push(s.teil);
       return { ok: true, zustand: stand, hinweise: [] };
     } finally {
       weg.historie.aufnehmen(teile);
@@ -148,7 +193,10 @@ export interface Ruecknahmelage {
 }
 
 /** Zählt aus dem Speicher, was am Auftrags-LV hängt (Nachtrags-LVs, Aufmaßblätter, Rechnungen, Mängel, Vorgänge). */
-export async function ruecknahmelage(speicher: Speicher, auftrag: AuftragsLvZustand): Promise<Lesung<Ruecknahmelage>> {
+export async function ruecknahmelage(
+  speicher: Speicher,
+  auftrag: AuftragsLvZustand,
+): Promise<Lesung<Ruecknahmelage>> {
   const a = auftrag.auftragsLeistungsverzeichnis;
   const lvs = await speicher.leistungsverzeichnisse.auflisten(a.projektId);
   if (!lvs.ok) return lvs;

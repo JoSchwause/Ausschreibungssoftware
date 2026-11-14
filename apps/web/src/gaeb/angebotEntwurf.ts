@@ -4,12 +4,7 @@
 // Rein und ohne React. Eine unlesbare Eingabe ist eine Meldung am Feld und wird nicht gesendet (U5: sie sperrt die übrigen
 // nicht). Einen Eintrag ganz zu entfernen gibt es nicht; die Berichtigung ist „nicht angeboten“ (D-138.6).
 
-import {
-  formatiereBetragDe,
-  formatiereEinheitspreisDe,
-  formatiereProzentDe,
-  parseDe,
-} from '@tethys/dezimal';
+import { formatiereBetragDe, formatiereEinheitspreisDe, formatiereProzentDe, parseDe } from '@tethys/dezimal';
 import type {
   Angebot,
   AngebotBefehl,
@@ -102,7 +97,10 @@ export function entwurfsbefehle(lv: LvZustand, angebot: Angebot, entwurf: Angebo
     const vorher = zeileAus(p, alt);
     if (z.nichtAngeboten === vorher.nichtAngeboten && z.text.trim() === vorher.text) continue;
     if (z.nichtAngeboten) {
-      befehle.push({ art: 'AngebotspositionSetzen', position: { positionId: p.id, status: 'nicht-angeboten' } });
+      befehle.push({
+        art: 'AngebotspositionSetzen',
+        position: { positionId: p.id, status: 'nicht-angeboten' },
+      });
       continue;
     }
     if (z.text.trim() === '') {
@@ -119,7 +117,13 @@ export function entwurfsbefehle(lv: LvZustand, angebot: Angebot, entwurf: Angebo
       const ep = alt?.status === 'angeboten' ? alt.einheitspreis : ('0.000' as Einheitspreis);
       befehle.push({
         art: 'AngebotspositionSetzen',
-        position: { positionId: p.id, status: 'angeboten', einheitspreis: ep, epa: null, zuschlagssatz: satz.wert },
+        position: {
+          positionId: p.id,
+          status: 'angeboten',
+          einheitspreis: ep,
+          epa: null,
+          zuschlagssatz: satz.wert,
+        },
       });
       continue;
     }

@@ -111,7 +111,7 @@ describe('angebotAendern', () => {
     const r = await angebotAendern(weg, angebot.id, [
       { art: 'AngebotsNachlassSetzen', nachlass: { art: 'prozent', wert: '120.00' as Prozent } },
     ]);
-    expect(r.ok === false && r.abweisung.art).toBe('befehl');
+    expect(!r.ok && r.abweisung.art).toBe('befehl');
     expect(weg.historie.tiefe.rueck).toBe(tiefe);
     expect((await gesamt(u, angebot.id)).summen.gesamt.nachlass).toBe('0.00');
   });
@@ -156,9 +156,10 @@ describe('Bieter', () => {
     expect(zaehlung.ok && zaehlung.wert.get(bieterId)).toBe(1);
 
     const gesperrt = await bieterLoeschenSchreiben(weg, projekt.id, bieterId);
-    expect(gesperrt.ok === false && gesperrt.abweisung.art === 'befehl' && gesperrt.abweisung.fehler).toMatchObject(
-      { code: 'verweise-vorhanden', verweise: [{ art: 'angebot', anzahl: 1 }] },
-    );
+    expect(!gesperrt.ok && gesperrt.abweisung.art === 'befehl' && gesperrt.abweisung.fehler).toMatchObject({
+      code: 'verweise-vorhanden',
+      verweise: [{ art: 'angebot', anzahl: 1 }],
+    });
 
     expect((await angebotAendern(weg, angebot.id, [{ art: 'AngebotLoeschen' }])).ok).toBe(true);
     const r = await bieterLoeschenSchreiben(weg, projekt.id, bieterId);
@@ -203,7 +204,7 @@ describe('Zuschlag zurücknehmen', () => {
     });
     // Mit Zuschlag sperrt der Speicher das Löschen des beauftragten Angebots.
     const vorher = await angebotAendern(weg, angebot.id, [{ art: 'AngebotLoeschen' }]);
-    expect(vorher.ok === false && vorher.abweisung.art).toBe('speicher');
+    expect(!vorher.ok && vorher.abweisung.art).toBe('speicher');
 
     expect((await zuschlagZuruecknehmenSchreiben(weg, id)).ok).toBe(true);
     const liste = await u.speicher.auftragsLeistungsverzeichnisse.auflisten(projekt.id);
@@ -224,7 +225,7 @@ describe('Zuschlag zurücknehmen', () => {
     );
     expect(blatt.ok).toBe(true);
     const r = await zuschlagZuruecknehmenSchreiben(weg, a.id);
-    expect(r.ok === false && r.abweisung.art === 'befehl' && r.abweisung.fehler).toMatchObject({
+    expect(!r.ok && r.abweisung.art === 'befehl' && r.abweisung.fehler).toMatchObject({
       code: 'verweise-vorhanden',
       verweise: [{ art: 'aufmass', anzahl: 1 }],
     });

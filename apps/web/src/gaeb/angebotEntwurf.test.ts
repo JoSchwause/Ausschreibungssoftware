@@ -7,7 +7,12 @@ import { lvBefehlAusfuehren, lvChangeSetAnwenden } from '@tethys/kern';
 import type { Angebot, AngebotId, BieterId, LvZustand, PositionId, ProjektId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
-import { angebotsentwurf, entwurfsbefehle, positionenInReihenfolge, type Angebotsentwurf } from './angebotEntwurf';
+import {
+  angebotsentwurf,
+  entwurfsbefehle,
+  positionenInReihenfolge,
+  type Angebotsentwurf,
+} from './angebotEntwurf';
 
 const P0010 = '019b76e9-ea42-7a6c-9180-36c38b8c3b9e' as PositionId;
 

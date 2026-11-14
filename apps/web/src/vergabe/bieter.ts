@@ -38,12 +38,15 @@ function angabenfelder(a: Bieterangaben | null | undefined): Omit<Bieterformular
 export function bieterangabenAusFormular(f: Bieterformular): Bieterangaben | null {
   const anschrift: Anschrift = { strasse: oderNull(f.strasse), plz: oderNull(f.plz), ort: oderNull(f.ort) };
   const a: Bieterangaben = {
-    anschrift: anschrift.strasse === null && anschrift.plz === null && anschrift.ort === null ? null : anschrift,
+    anschrift:
+      anschrift.strasse === null && anschrift.plz === null && anschrift.ort === null ? null : anschrift,
     ansprechperson: oderNull(f.ansprechperson),
     email: oderNull(f.email),
     telefon: oderNull(f.telefon),
   };
-  return a.anschrift === null && a.ansprechperson === null && a.email === null && a.telefon === null ? null : a;
+  return a.anschrift === null && a.ansprechperson === null && a.email === null && a.telefon === null
+    ? null
+    : a;
 }
 
 /** Gleich nach der Normalform (`''` wie `null`, leere Anschrift wie keine). */
