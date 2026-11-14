@@ -83,6 +83,8 @@ export function appIdQuelle(optionen: IdQuelleOptionen = {}): IdQuelle {
     honorarberechnung: k,
     mangel: k,
     bautagebucheintrag: k,
+    // v1.7b: mechanisch angepasst, Folgeticket 152 (Kennung einer Zahlung, Ticket 128)
+    zahlung: k,
   };
 }
 

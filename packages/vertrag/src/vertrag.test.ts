@@ -433,7 +433,17 @@ type KeineDaten<T, Tiefe extends unknown[] = []> = Tiefe['length'] extends 14
 /** `true`, wenn T nur aus Daten besteht: keine Funktion, kein Date, alles verschachtelt gleich. */
 type NurDaten<T> = [KeineDaten<T>] extends [never] ? true : false;
 
+/** Die Befehle an der Rechnung aus v1.7b (Ticket 128); die geschlossenen Listen aus v1.4 nehmen sie aus. */
+type RechnungBefehlV17b =
+  | 'VertragsstrafeSetzen'
+  | 'SkontoSetzen'
+  | 'BauabzugsteuerSetzen'
+  | 'ZahlungErfassen'
+  | 'ZahlungAendern'
+  | 'ZahlungLoeschen';
+
 // Sonden ab `Langtext` und `Knoten`: Jedes Langtext-Konstrukt liegt hier flach genug, um geprüft zu werden.
+
 describe('reine Daten bis in den Langtext (v1.1b)', () => {
   it('Langtext und Knoten bestehen nur aus Daten', () => {
     expectTypeOf<NurDaten<Langtext>>().toEqualTypeOf<true>();
@@ -1503,7 +1513,8 @@ describe('v1.4 Punkt 7: Rechnung (A3, D-34)', () => {
   });
 
   it('Befehle; Freigeben trägt den Zahlbetrag, den die App gerechnet hat', () => {
-    expectTypeOf<RechnungBefehl['art']>().toEqualTypeOf<
+    // v1.7b (Ticket 128): dazu sechs Befehle für Vertragsstrafe, Skonto, Bauabzugsteuer und Zahlungen, siehe dort.
+    expectTypeOf<Exclude<RechnungBefehl['art'], RechnungBefehlV17b>>().toEqualTypeOf<
       | 'RechnungAnlegen'
       | 'RechnungsangabenSetzen'
       | 'RechnungsaufmasseSetzen'
@@ -1777,7 +1788,8 @@ describe('v1.4 Punkt 11: Beispiele für jeden neuen Befehl und die Zustände', (
     ];
     type Neu =
       | AufmassBefehl['art']
-      | RechnungBefehl['art']
+      // v1.7b (Ticket 128): die sechs neuen Befehle haben ihre Beispiele in `vertrag-v17b.test.ts`
+      | Exclude<RechnungBefehl['art'], RechnungBefehlV17b>
       | KostenermittlungBefehl['art']
       | 'NachtragUebernehmen'
       | 'NachtragsangabenSetzen'
@@ -1865,9 +1877,10 @@ describe('v1.4: reine Daten und Werte vor v1.4', () => {
 
 describe('v1.5 Punkt 1: ein Fehlercode für Feldbefehle an der falschen Knotenart (D-71.3)', () => {
   it('kein neuer Code: die geschlossene Liste bleibt die aus v1.4 (die App führt je Code einen Text)', () => {
-    // v1.6 (Ticket 97 Punkt 6): dazu `statuswechsel-unzulaessig`; v1.7a (Ticket 127): `verweise-vorhanden`, siehe dort.
+    // v1.6 (Ticket 97 Punkt 6): dazu `statuswechsel-unzulaessig`; v1.7a (Ticket 127): `verweise-vorhanden`; v1.7b (Ticket
+    // 128): `zahlungen-vorhanden`; siehe jeweils dort.
     expectTypeOf<
-      Exclude<Befehlsfehlercode, 'statuswechsel-unzulaessig' | 'verweise-vorhanden'>
+      Exclude<Befehlsfehlercode, 'statuswechsel-unzulaessig' | 'verweise-vorhanden' | 'zahlungen-vorhanden'>
     >().toEqualTypeOf<
       | 'ungueltige-eingabe'
       | 'knoten-unbekannt'

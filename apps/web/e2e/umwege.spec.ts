@@ -84,7 +84,7 @@ test('Zeile öffnen (Punkt 2): Strg+Enter und Doppelklick auf OZ öffnen den Pos
   // Eine Gliederung hat keinen Positionsdialog: Hinweis statt Dialog.
   await zelle(page, 'Baustelleneinrichtung', 'kurztext').focus();
   await page.keyboard.press('Control+Enter');
-  await expect(page.getByText('Merkmale gibt es nur an Positionen')).toBeVisible();
+  await expect(page.getByText('Titel werden im Grid bearbeitet', { exact: true })).toBeVisible();
   await expect(dialog).toHaveCount(0);
 });
 

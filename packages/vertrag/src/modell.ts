@@ -25,6 +25,7 @@ import type {
 } from './marken';
 import type { Betrag, Einheitspreis, Menge, Prozent } from './zahlen';
 import type { Bauteilzuordnung } from './bim';
+import type { Skonto, Vertragsstrafe, Zahlung } from './zahlung';
 
 // --- Texte ---------------------------------------------------------------------------------
 
@@ -1004,17 +1005,26 @@ export interface Umlage {
 /**
  * Rechnung des Auftragnehmers zu einem Auftrags-LV, wie der Auftraggeber sie prüft (v1.4, Ticket 70 Punkt 7; A3, D-34,
  * D-36 (2); Glossar „Rechnung“). Eigenes Aggregat; Befehle führt `abrechnung` aus (Ticket 81), der Ausführer sieht nur die
- * Rechnung (D-70.3). Gespeichert sind nur Angaben, Abzüge und die Freigabe: Das
- * Prüfergebnis (Leistung → Nachlass → MwSt → Umlagen → Einbehalt → Zahlbetrag, D-34) wird gerechnet, nie gespeichert;
- * eingefroren wird nur der freigegebene Zahlbetrag.
+ * Rechnung (D-70.3). Gespeichert sind nur Angaben, Abzüge, die Freigabe und (v1.7b) Skonto, Bauabzugsteuer und Zahlungen: Das
+ * Prüfergebnis (Leistung → Nachlass → MwSt → Umlagen → Vertragsstrafe → Einbehalt → Zahlbetrag, D-34, D-72; danach der
+ * `Zahlungsstand`) wird gerechnet, nie gespeichert; eingefroren wird nur der freigegebene Zahlbetrag.
  *
- * Vorläufige Annahme, Entscheidung offen (enge Lesart): Eine freigegebene Rechnung (`freigabe` gesetzt) ändert nur
- * `RechnungsfreigabeAufheben` (Q5); jeden anderen Befehl, auch `RechnungLoeschen`, weist der Ausführer mit
- * `rechnung-freigegeben` ab.
+ * Vorläufige Annahme, Entscheidung offen (enge Lesart): Eine freigegebene Rechnung (`freigabe` gesetzt) ändern nur
+ * `RechnungsfreigabeAufheben` und (v1.7b) die Zahlungsbefehle `ZahlungErfassen`, `ZahlungAendern`, `ZahlungLoeschen` (Q5);
+ * jeden anderen Befehl, auch `RechnungLoeschen` und die Befehle für Vertragsstrafe, Skonto und Bauabzugsteuer, weist der
+ * Ausführer mit `rechnung-freigegeben` ab (D-128.7).
  *
  * Invariante (D-34 (7), Q5): **Die freigegebenen Rechnungen eines Auftrags-LV sind stets die mit den kleinsten Nummern.**
  * Nur so ist „Σ frühere Zahlbeträge“ eindeutig; `speicher` hält sie (`konflikt`, siehe `RechnungChangeSet`), auch gegen das
  * Anlegen einer Rechnung unterhalb einer schon freigegebenen.
+ *
+ * Invariante (v1.7b, D-72, Q5): **Eine Rechnung mit Zahlungen ist freigegeben** (`zahlungen` gesetzt ⇒ `freigabe` gesetzt).
+ * Der Ausführer weist Zahlungsbefehle an einer nicht freigegebenen Rechnung ab und `RechnungsfreigabeAufheben` an einer mit
+ * Zahlungen (`zahlungen-vorhanden`); `speicher` hält sie für jedes ChangeSet, auch für ein Undo (`konflikt`).
+ *
+ * v1.7b (Ticket 128, D-72; D-128.2): Die vier neuen Felder stehen am Ende, sind optional, und „fehlt“ ist die einzige
+ * Schreibweise für „keine“ bzw. „aus“ (nie `null`, `false` oder `[]`; wie D-43). Eine Rechnung ohne sie (alle vor v1.7b) wird
+ * genau wie bisher geprüft (A8).
  */
 export interface Rechnung {
   readonly id: RechnungId;
@@ -1079,6 +1089,25 @@ export interface Rechnung {
    * Negativ heißt Überzahlung (ein Befund, keine Sperre).
    */
   readonly freigabe: { readonly zahlbetrag: Betrag } | null;
+  /**
+   * v1.7b (D-72; Glossar „Vertragsstrafe“): die bis zu dieser Rechnung geltend gemachte Vertragsstrafe, kumuliert; fehlt:
+   * keine. Gelesen bei `abschlag` und `schluss`. Die App schlägt beim Anlegen die der vorigen Rechnung vor (wie die
+   * Einbehaltssätze); `RechnungAnlegen` trägt sie dann mit. Siehe `Vertragsstrafe`.
+   */
+  readonly vertragsstrafe?: Vertragsstrafe;
+  /** v1.7b (D-72; Glossar „Skonto / Skontofrist“): der vereinbarte Skonto; fehlt: keiner. Siehe `Skonto`. */
+  readonly skonto?: Skonto;
+  /**
+   * v1.7b (D-72; Glossar „Bauabzugsteuer“): Schalter der Bauabzugsteuer; `true`: eingeschaltet, fehlt: aus (der Standard; nie
+   * `false`, wie `LvUebersicht.vorlage`). Den Satz nennt `BAUABZUGSTEUER_SATZ`.
+   */
+  readonly bauabzugsteuer?: true;
+  /**
+   * v1.7b (D-72; Glossar „Zahlung“): die erfassten Zahlungen an den Auftragnehmer, in der Reihenfolge des Erfassens
+   * (`ZahlungAendern` ersetzt eine Zahlung an ihrer Stelle; die Anzeige ordnet nach Datum), jede Kennung höchstens einmal.
+   * Fehlt: keine (die letzte gelöschte Zahlung entfernt das Feld). Nur an einer freigegebenen Rechnung (Invariante oben).
+   */
+  readonly zahlungen?: readonly Zahlung[];
 }
 
 // --- Kostenermittlung (v1.4, C3; D-36 (3)) ------------------------------------------------------------------------
