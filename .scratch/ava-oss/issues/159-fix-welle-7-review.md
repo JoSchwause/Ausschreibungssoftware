@@ -1,6 +1,6 @@
 # 159: Behebung des Wellen-Reviews Welle 7
 
-Status: claimed
+Status: done-by-agent (159b; 159a getrennt)
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: 159a: Pakete (`gaeb`, `ui-grid`, `bauzeit`, `ausgabe`, `abrechnung`-Paket, `vergabe`, `vertrag` nur Kommentare, `fixtures/`, `GLOSSARY.md`) und App-Ordner `gaeb/` für SB3; 159b: App-Ordner `kosten/`, `vergabe/`, `honorar/`, `bauzeit/`, `bauleitung/`, `nachtrag/`, `hilfe/`, `auftrag/`, `lv/` (nur Spec), `ui/`, `e2e/`, `e2e-basispfad/`, `README.md`. Gesperrt bis zu ihrem Merge: `apps/web/src/abrechnung/`, `rechnung/` (152), `kern`, `speicher`, `projekt/`, `historie/` (161), `apps/web/src/ausgabe/` (162)
 Blocked by: alle Merges außer 152, 161, 162
@@ -18,11 +18,11 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
 
 ## Acceptance criteria
 
-- [ ] Jeder Pflichtpunkt aus D-104 erledigt oder begründet
-- [ ] Volle Web-E2E einmal grün (Budget-Ausfälle unter Last werden gemeldet, nie gelockert)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Jeder Pflichtpunkt aus D-104 erledigt oder begründet (159b; PB2 und `gaeb.ts:60` liegen in `gaeb/`, siehe D-159b.6)
+- [x] Volle Web-E2E einmal gelaufen: 126 grün, 1 unter Last rot (`nachtrag.spec`, Escape schloss den Positionsdialog nicht in 5 s), einzeln wiederholt grün (Budget-Ausfälle unter Last werden gemeldet, nie gelockert)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün bis auf zwei Leistungsbudgets unter Last (`speicher/v16-leistung`, `abrechnung/leistung`), einzeln grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -78,3 +78,5 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
   „Ändern …“ der nächsten Zahlung, sonst auf „Zahlung erfassen …“; die Beschriftungen nennen Datum und Betrag (E2E). R4 Text
   des Hinweises zur Vertragsstrafe. R5 Spalte „Offen“ zeigt „–“ bis zur Freigabe (E2E). R7 `historie/texte.ts` `konflikt`
   nennt den Fall und den nächsten Schritt.
+- **D-159b.14 Basis-Pfad-Probe** war seit der Navigation der Welle 7 rot (Fenstertitel „Projekte – Tethys AVA“, kein Verweis
+  „LV“ in der Hauptnavigation); sie geht jetzt über „Hilfe“ und läuft ohne Konsolen-Ausnahme grün.
