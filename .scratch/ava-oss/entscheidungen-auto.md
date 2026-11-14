@@ -942,3 +942,10 @@ Decision: Alle drei gemergt (`fa2a690`, `bd50386`, `5af993b`); einziger Konflikt
 Reason: Pflicht nach D-104/D-109 (gleiche Aussage auf Bildschirm und PDF, Texte nach L5); ein Wackler im Tor-Umfeld darf nicht offen bleiben.
 Reversible: yes  Touches: rechnung/, gaeb/, bauzeit, speicher (Kommentar), e2e, Ticket 163
 Nachtrag zu D-110: Der Merge-Commit `5fa34fd` (zweiter Elternteil `2b21f48`) ist der Merge von **158** (`welle-7/158-tor-e`); seine Nachricht lautet durch ein versehentliches `--amend` des Orchestrators „Merge welle-7/159a-review-pakete …“ und trägt keinen Trailer. Nicht umgeschrieben, weil Ticket 163 schon auf `576df95` aufsetzt.
+
+## D-111 Merge 163
+Welle 7 · Ticket 163 · decided by: orchestrator
+Question: 163 ist done-by-agent. Mergen? Zählt `packages/ui-basis` als „Ordner der Ursache“ (Punkt 5)? Gemeinsame Skonto-Funktion über einen Unterpfad von `@tethys/ausgabe`?
+Decision: Gemergt (`103e4e9`), ohne Konflikt. `ui-basis` ist bestätigt: Die Ursache des Wacklers lag dort (eine ältere Meldung bekam Escape, solange Radix seine Schichten nach dem Öffnen eines Dialogs noch nicht neu sortiert hatte); behoben mit Regressionstest, nicht im Test versteckt. Das deckt auch D-162.3 ab. Bildschirm und PDF nutzen zwei Funktionen mit einem Test, der für alle Fixture-Varianten und sechs Daten gleichen Text verlangt (D-163.2); ein Unterpfad-Export von `@tethys/ausgabe` ohne pdfmake im Hauptbündel geht in den Bericht als Folgeticket für die nächste Welle.
+Reason: Gleiche Aussage ist durch den Test gesichert; der Unterpfad wäre eine Paketänderung nach dem Review und verdoppelte sonst das Hauptbündel (938 kB → 1810 kB, gemessen).
+Reversible: yes  Touches: rechnung/, ui-basis, Bericht
