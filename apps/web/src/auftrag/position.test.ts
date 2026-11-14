@@ -7,6 +7,7 @@ import type {
   Einheit,
   Einheitspreis,
   Knoten,
+  Kostengruppennummer,
   Langtext,
   Menge,
   Ordnungszahl,
@@ -102,7 +103,7 @@ describe('positionsangaben', () => {
   });
 
   it('nennt die Kostengruppe, wenn die Position eine trägt; eine unbekannte Kennung ergibt null', () => {
-    const p = position('k', { kurztext: 'Mauerwerk', kostengruppe: '331' as Position['kostengruppe'] });
+    const p = position('k', { kurztext: 'Mauerwerk', kostengruppe: '331' as Kostengruppennummer });
     const a = positionsangaben(auftrag([p], {}), 'k' as PositionId);
     expect(a?.zeilen.at(-1)).toEqual({ label: 'Kostengruppe', wert: '331' });
     expect(positionsangaben(auftrag([p], {}), 'x' as PositionId)).toBeNull();
