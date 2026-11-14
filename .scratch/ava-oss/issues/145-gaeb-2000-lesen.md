@@ -1,6 +1,6 @@
 # 145: GAEB 2000 lesen (.p81/.p83/.p84/.p86)
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: G4, E6 · Paket/Ordner: `packages/gaeb`, `fixtures/gaeb-formate/`
 Blocked by: 144
