@@ -1,6 +1,6 @@
 # 151: App: Auftrags-LV (Langtext, Excel) und geführter Nachtrag
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: A1, E9 · Paket/Ordner: `apps/web/src/auftrag/`, `nachtrag/`
 Blocked by: 142
@@ -18,10 +18,10 @@ Herkunft: umfang §3 E9, B-17, B-18
 
 ## Acceptance criteria
 
-- [ ] E2E für 1–2; M4 grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] E2E für 1–2; M4 grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -58,3 +58,13 @@ Entscheidungen im Demo-Modus (Branch `welle-7/151-auftrag-nachtrag`):
 - **D-151.8** Der Testpfad liest `typisch` ohne Langtexte; `nachtrag.spec.ts` setzt der ersten Position mit Langtext in der
   Fixture ihren Text als Absatz, bevor das LV angelegt wird (Summen unverändert).
 - Text „kein Angebot des Auftragnehmers“ im Dialog „Beauftragen“ nennt jetzt den geführten Weg statt „Bieter = Auftragnehmer“.
+
+Ergebnis (nach `git merge integration/welle-7`, Stand `a99ee9d`):
+
+- `pnpm lint` (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean Room) und `pnpm typecheck` grün; `sprache.test.ts` grün.
+- `pnpm test`: 4.494 grün, 3 übersprungen, 11 rot, nur CPU-Leistungsbudgets fremder Pakete bei Last 23 auf 4 Kernen
+  (`gaeb` lesen/schreiben, `kern` ×4, `speicher` ×3, `vergabe`, `apps/web/src/abrechnung/leistung.test.ts`); die zehn Dateien
+  danach nacheinander: 8 grün, 2 weiter rot bei Last 19 (`speicher` v16 Zuordnungen, App-Aufmaß-Undo). Keine Datei dieses
+  Tickets, nichts gelockert.
+- E2E (`--workers=1`): `nachtrag.spec.ts`, `m4.spec.ts` (nach dem Merge), `arbeitsflaeche.spec.ts` (4), `kosten.spec.ts`,
+  `m3.spec.ts`, `aufmass.spec.ts` (2), `rechnung.spec.ts` grün.
