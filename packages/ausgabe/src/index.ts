@@ -51,7 +51,8 @@ export { excelRuecklaufLesen, lvAlsExcel, strukturPruefsumme } from './excel';
 export type { ExcelBefund, ExcelBefundcode, ExcelDatei, ExcelOptionen, ExcelRuecklauf } from './excel';
 
 // Berichte (Tickets 113, 141): Berichtsmodell, PDF und Excel für Mängelliste, Mängelanzeige, Bautagebuch, Honorarberechnung,
-// Bauzeitenplan und die Ausgaben der Kernkette (Preisspiegel, Vergabevorschlag, Aufmaßblatt, Soll/Ist, Rechnungsprüfung).
+// Bauzeitenplan, die Ausgaben der Kernkette (Preisspiegel, Vergabevorschlag, Aufmaßblatt, Soll/Ist, Rechnungsprüfung) und
+// der Kosten (Kostenermittlung, Kostenkontrolle; Ticket 153).
 export type {
   BerichtAbschnitt,
   BerichtBlock,
@@ -78,6 +79,12 @@ export type { SollIstEingabe } from './soll-ist-druck';
 export { baueRechnungspruefungModell } from './rechnung-druck';
 export type { RechnungspruefungEingabe } from './rechnung-druck';
 export type { VergabevorschlagEingabe } from './vergabevorschlag-druck';
+export {
+  KOSTENERMITTLUNGSSTUFE_TEXT,
+  baueKostenermittlungModell,
+  baueKostenkontrolleModell,
+} from './kosten-druck';
+export type { KostenermittlungEingabe, KostenkontrolleEingabe } from './kosten-druck';
 export { MAENGELANZEIGE_TEXT, baueMaengelanzeigeModell, baueMaengellisteModell } from './maengel-druck';
 export type { MaengelanzeigeEingabe, MaengellisteEingabe } from './maengel-druck';
 export { baueBautagebuchModell } from './bautagebuch-druck';
@@ -92,12 +99,16 @@ export {
   erzeugeBautagebuchPdf,
   erzeugeBauzeitenplanPdf,
   erzeugeHonorarPdf,
+  erzeugeKostenermittlungPdf,
+  erzeugeKostenkontrollePdf,
   erzeugeMaengelanzeigePdf,
   erzeugeMaengellistePdf,
   erzeugePreisspiegelPdf,
   erzeugeRechnungspruefungPdf,
   erzeugeSollIstPdf,
   erzeugeVergabevorschlagPdf,
+  kostenermittlungAlsExcel,
+  kostenkontrolleAlsExcel,
   preisspiegelAlsExcel,
   sollIstAlsExcel,
 } from './bericht-einstiege';

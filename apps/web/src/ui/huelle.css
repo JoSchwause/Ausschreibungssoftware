@@ -278,10 +278,31 @@ body {
   grid-area: status;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--tx-space-6);
   padding: 0 var(--tx-space-4);
   border-top: 1px solid var(--tx-color-border);
   background: var(--tx-color-surface-sunken);
   color: var(--tx-color-text-muted);
   font-size: var(--tx-font-size-sm);
+  white-space: nowrap;
+}
+
+/* Ticket 147: Speicherzustand (Verweis auf die Hilfe „Daten und Sicherung“) und letzte Sicherung */
+.huelle__status-verweis {
+  color: inherit;
+  text-decoration: none;
+}
+
+.huelle__status-verweis:hover {
+  color: var(--tx-color-text);
+  text-decoration: underline;
+}
+
+.huelle__status-verweis:focus-visible {
+  outline: var(--tx-focus-ring);
+  outline-offset: 1px;
+}
+
+.huelle__status-rechts {
+  margin-left: auto;
 }

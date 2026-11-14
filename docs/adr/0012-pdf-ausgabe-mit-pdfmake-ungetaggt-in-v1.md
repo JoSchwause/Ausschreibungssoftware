@@ -28,6 +28,7 @@ Die App läuft lokal ohne Server (ADR 0001). Ein PDF, das sich ablegen und spät
 - pdfmake belegt den Hauptthread (etwa 3 bis 4 s bei 5.000 Positionen). Die App ruft es aus einem Worker auf und lädt das Bündel erst beim Drucken nach (Ticket 66).
 - Das PDF ist nicht barrierefrei im Sinne eines Strukturbaums. Verlangt ein Auftraggeber Tags, braucht es vor den Druckprofilen (O3) einen kleinen Spike mit einer Bibliothek, die Struktur-Tags schreibt (nicht geprüft: pdf-lib, jsPDF, @react-pdf). Wegen der Naht ändert sich dann nur der Renderer.
 - Bilder im Langtext druckt v1 nicht; an ihrer Stelle steht die Marke „[Abbildung]“, damit nichts still verschwindet (Q5).
+- **Nachtrag 2026-11-14 (Welle 7, G-61, E11/E12, D-88):** Bilder aus dem Langtext stehen jetzt im LV-PDF (PNG und JPEG, am Inhalt erkannt, mit Grenzen für Dateigröße und Bildpunkte, auf dem Papier nie vergrößert; D-141.5). Die Marke „[Abbildung]“ bleibt für alles, was der Druck nicht sicher lesen kann, damit nichts still verschwindet (Q5). Das Bild steht schon im `Ausgabemodell`; der Renderer rechnet weiter nichts.
 - Die Schrift Noto Sans liegt als Datei im Repo (`packages/ausgabe/schriften/`, REUSE-Eintrag, Lizenztext unter `LICENSES/OFL-1.1.txt`).
 - Entscheidung als Annahme im Demo-Lauf getroffen und für v1 angenommen (G-58, G-62); das Büro prüft im Probebetrieb, ob ein getaggtes PDF nötig ist (W-04).
 
@@ -47,3 +48,4 @@ Die Ausgaben der Vorschau-Module (Mängelliste, Mängelanzeige, Bautagebuch, Hon
 - Die Naht-Regel dieses ADR gilt unverändert: Der Renderer liest nur ein druckfertiges Modell, Zahlen und Texte sind schon de-DE formatiert (N4), das Paket rechnet nichts (A2) und kennt keine Uhr; Datum und Datei-ID kommen aus der Eingabe.
 - Beide Modelle werden mit pdfmake und Noto Sans ungetaggt gedruckt. Ein getaggter Renderer (siehe Spike) bräuchte für jedes der beiden Modelle einen eigenen Weg.
 - Der Excel-Export bleibt am `Ausgabemodell`; für Berichte gibt es in v1 nur PDF.
+- **Nachtrag 2026-11-14 (Welle 7, G-61, E11/E12, D-88):** Berichte gibt es jetzt auch als Excel (Preisspiegel, Aufmaßblatt, Soll/Ist, Kostenermittlung, Kostenkontrolle). Ein allgemeiner Excel-Renderer liest das `Berichtsmodell`, wie der PDF-Renderer; eine Zahl trägt neben ihrem de-DE-Text den Wert und ihre Zahlenart, damit Excel sie als Zahl mit dem Format nach N3 schreibt (D-141.2). Das Modell rechnet dafür nichts (A2). Die Entscheidung dieses ADR (pdfmake, ungetaggt, das Modell als Naht) bleibt unverändert; der LV-Export liest weiter das `Ausgabemodell`.

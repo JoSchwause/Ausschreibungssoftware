@@ -126,6 +126,11 @@ function block(b: BerichtBlock, blatt: Tabellenblatt): void {
     case 'tabelle':
       tabelle(b, blatt);
       break;
+    case 'balkenplan':
+      // Balken haben in einer Tabelle keine Form; die Termine stehen in der Tabelle des Berichts.
+      blatt.zeilen.push([text('Vorgang', STIL.kopf)]);
+      for (const z of b.zeilen) blatt.zeilen.push([text(z.name, z.fett === true ? STIL.titel : STIL.text)]);
+      break;
   }
 }
 
