@@ -1,0 +1,321 @@
+{
+  "schemaVersion": "fixture-v1",
+  "art": "zahlungsset",
+  "regel": "Ticket 143, Strang A5, README „Abzüge und Zahlungen: A5“: aufbauend auf `typisch-abrechnung.json` (Tor M4, Stand nach der Korrektur von Blatt 1) Vertragsstrafe, Skonto, Bauabzugsteuer und Zahlungen nach D-72 und den Lesarten D-128.3 bis D-128.8 (Bauabzugsteuer 0,00 bei einer Basis ≤ 0,00: D-93). Kette: Brutto kumuliert → Umlagen → Vertragsstrafe → Einbehalt → frühere eingefrorene Zahlbeträge → Zahlbetrag (eingefroren) → Skonto → Bauabzugsteuer → Auszahlung → Zahlungen → offen. Jeder Schritt kaufmännisch auf 2 Stellen gerundet, dann verrechnet (N2, E-07). Fristende = Eingang + Skontofrist in Kalendertagen (der Eingangstag zählt nicht, keine Verschiebung auf Werktage); eine Zahlung am Fristende ist rechtzeitig. Skonto verwirklicht, wenn der mögliche Skonto > 0,00 ist und die Zahlungen bis zum Fristende zusammen mindestens die Auszahlung mit Skonto erreichen. Offen = Zahlbetrag − verwirklichter Skonto − Bauabzugsteuer − Summe der Zahlungen. Sollwerte von Hand hergeleitet (siehe `herleitung`), im Selbsttest eigens nachgerechnet (`zahlungen.test.mjs`, nur BigInt, ohne Pakete). Ganze Zahlen der Vertragstypen (`nummer`, `fristTage`) als JSON-Zahl, Beträge und Sätze als Text (D-143.1). Alles erfunden.",
+  "basis": {
+    "datei": "typisch-abrechnung.json",
+    "aufmassIdsAr1": ["019b7708-6ec8-705e-88ab-a127af67f61b"],
+    "korrigiert": true,
+    "hinweis": "AR 1 wird vor der Korrektur von Blatt 1 geprüft und freigegeben (Zahlbetrag 8.874,40 eingefroren, wie M4); AR 2 wird nach der Korrektur geprüft (Blatt 1 korrigiert, Blatt 2)."
+  },
+  "bauabzugsteuerSatz": "15.00",
+  "befehle": {
+    "ar1": {
+      "vorFreigabe": [
+        { "art": "SkontoSetzen", "skonto": { "satz": "3.00", "fristTage": 14 } },
+        { "art": "BauabzugsteuerSetzen", "bauabzugsteuer": true }
+      ],
+      "freigabe": { "art": "RechnungFreigeben", "zahlbetrag": "8874.40" },
+      "nachFreigabe": [
+        {
+          "art": "ZahlungErfassen",
+          "zahlung": { "id": "019b7a43-5a00-7000-8000-000000000011", "datum": "2026-11-13", "betrag": "7316.94" }
+        }
+      ]
+    },
+    "ar2": {
+      "vorFreigabe": [
+        {
+          "art": "VertragsstrafeSetzen",
+          "vertragsstrafe": { "betrag": "1500.00", "grund": "Zwischenfrist Rohbau um 3 Werktage überschritten (erfunden)" }
+        },
+        { "art": "SkontoSetzen", "skonto": { "satz": "2.00", "fristTage": 10 } }
+      ],
+      "freigabe": { "art": "RechnungFreigeben", "zahlbetrag": "8570.67" },
+      "nachFreigabe": [
+        {
+          "art": "ZahlungErfassen",
+          "zahlung": { "id": "019b7a43-5a00-7000-8000-000000000021", "datum": "2026-12-04", "betrag": "5000.00" }
+        },
+        {
+          "art": "ZahlungErfassen",
+          "zahlung": { "id": "019b7a43-5a00-7000-8000-000000000022", "datum": "2026-12-15", "betrag": "3000.00" }
+        }
+      ]
+    }
+  },
+  "rechnungen": [
+    {
+      "id": "019b7708-6eca-7394-aa65-037bd01670db",
+      "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+      "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+      "nummer": 1,
+      "art": "abschlag",
+      "eingang": "2026-10-30",
+      "rechnungsnummerAuftragnehmer": "AN-2026-017 (erfunden)",
+      "gefordert": null,
+      "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b"],
+      "umlagen": [{ "bezeichnung": "Bauwesenversicherung", "satz": "0.50" }],
+      "sicherheitSatz": "5.00",
+      "gewaehrleistungSatz": null,
+      "freigabe": { "zahlbetrag": "8874.40" },
+      "skonto": { "satz": "3.00", "fristTage": 14 },
+      "bauabzugsteuer": true,
+      "zahlungen": [{ "id": "019b7a43-5a00-7000-8000-000000000011", "datum": "2026-11-13", "betrag": "7316.94" }]
+    },
+    {
+      "id": "019b7708-6ecb-7dc9-a84a-f13ed1a46110",
+      "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+      "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+      "nummer": 2,
+      "art": "abschlag",
+      "eingang": "2026-11-27",
+      "rechnungsnummerAuftragnehmer": "AN-2026-023 (erfunden)",
+      "gefordert": null,
+      "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b", "019b7708-6ec9-7dbc-a446-887667e54aac"],
+      "umlagen": [{ "bezeichnung": "Bauwesenversicherung", "satz": "0.50" }],
+      "sicherheitSatz": "5.00",
+      "gewaehrleistungSatz": null,
+      "freigabe": { "zahlbetrag": "8570.67" },
+      "vertragsstrafe": { "betrag": "1500.00", "grund": "Zwischenfrist Rohbau um 3 Werktage überschritten (erfunden)" },
+      "skonto": { "satz": "2.00", "fristTage": 10 },
+      "zahlungen": [
+        { "id": "019b7a43-5a00-7000-8000-000000000021", "datum": "2026-12-04", "betrag": "5000.00" },
+        { "id": "019b7a43-5a00-7000-8000-000000000022", "datum": "2026-12-15", "betrag": "3000.00" }
+      ]
+    }
+  ],
+  "pruefungen": {
+    "ar1": {
+      "rechnungId": "019b7708-6eca-7394-aa65-037bd01670db",
+      "kette": {
+        "leistung": "8135.57",
+        "nachlass": "244.07",
+        "nettoNachNachlass": "7891.50",
+        "mwst": "1499.39",
+        "bruttoKumuliert": "9390.89",
+        "umlagen": [{ "bezeichnung": "Bauwesenversicherung", "satz": "0.50", "betrag": "46.95" }],
+        "vertragsstrafe": "0.00",
+        "einbehalt": "469.54",
+        "fruehereZahlbetraege": "0.00",
+        "zahlbetrag": "8874.40"
+      },
+      "zahlungsstand": {
+        "zahlbetrag": "8874.40",
+        "fristende": "2026-11-13",
+        "mitSkonto": { "skonto": "266.23", "bauabzugsteuer": "1291.23", "auszahlung": "7316.94" },
+        "ohneSkonto": { "skonto": "0.00", "bauabzugsteuer": "1331.16", "auszahlung": "7543.24" },
+        "skontoVerwirklicht": true,
+        "verwirklichterSkonto": "266.23",
+        "bauabzugsteuer": "1291.23",
+        "auszahlung": "7316.94",
+        "summeZahlungen": "7316.94",
+        "offen": "0.00"
+      },
+      "befunde": []
+    },
+    "ar2": {
+      "rechnungId": "019b7708-6ecb-7dc9-a84a-f13ed1a46110",
+      "kette": {
+        "leistung": "17367.85",
+        "nachlass": "521.04",
+        "nettoNachNachlass": "16846.81",
+        "mwst": "3200.89",
+        "bruttoKumuliert": "20047.70",
+        "umlagen": [{ "bezeichnung": "Bauwesenversicherung", "satz": "0.50", "betrag": "100.24" }],
+        "vertragsstrafe": "1500.00",
+        "einbehalt": "1002.39",
+        "fruehereZahlbetraege": "8874.40",
+        "zahlbetrag": "8570.67"
+      },
+      "zahlungsstand": {
+        "zahlbetrag": "8570.67",
+        "fristende": "2026-12-07",
+        "mitSkonto": { "skonto": "171.41", "bauabzugsteuer": "0.00", "auszahlung": "8399.26" },
+        "ohneSkonto": { "skonto": "0.00", "bauabzugsteuer": "0.00", "auszahlung": "8570.67" },
+        "skontoVerwirklicht": false,
+        "verwirklichterSkonto": "0.00",
+        "bauabzugsteuer": "0.00",
+        "auszahlung": "8570.67",
+        "summeZahlungen": "8000.00",
+        "offen": "570.67"
+      },
+      "befunde": []
+    }
+  },
+  "varianten": [
+    {
+      "name": "ar1-ohne-neue-felder",
+      "beschreibung": "AR 1 wie in M4, ohne Skonto, Bauabzugsteuer und Zahlungen: die Kette bleibt die von M4, nichts wird abgezogen.",
+      "basis": "ar1",
+      "rechnung": {
+        "id": "019b7708-6eca-7394-aa65-037bd01670db",
+        "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+        "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+        "nummer": 1,
+        "art": "abschlag",
+        "eingang": "2026-10-30",
+        "rechnungsnummerAuftragnehmer": "AN-2026-017 (erfunden)",
+        "gefordert": null,
+        "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b"],
+        "umlagen": [{ "bezeichnung": "Bauwesenversicherung", "satz": "0.50" }],
+        "sicherheitSatz": "5.00",
+        "gewaehrleistungSatz": null,
+        "freigabe": { "zahlbetrag": "8874.40" }
+      },
+      "zahlungsstand": {
+        "zahlbetrag": "8874.40",
+        "fristende": null,
+        "mitSkonto": { "skonto": "0.00", "bauabzugsteuer": "0.00", "auszahlung": "8874.40" },
+        "ohneSkonto": { "skonto": "0.00", "bauabzugsteuer": "0.00", "auszahlung": "8874.40" },
+        "skontoVerwirklicht": false,
+        "verwirklichterSkonto": "0.00",
+        "bauabzugsteuer": "0.00",
+        "auszahlung": "8874.40",
+        "summeZahlungen": "0.00",
+        "offen": "8874.40"
+      },
+      "befunde": []
+    },
+    {
+      "name": "ar1-zahlung-nach-fristende",
+      "beschreibung": "Dieselbe Zahlung einen Tag nach dem Fristende (14.11.2026): kein Skonto, die Bauabzugsteuer des Falls ohne Skonto, 226,30 offen.",
+      "basis": "ar1",
+      "rechnung": {
+        "id": "019b7708-6eca-7394-aa65-037bd01670db",
+        "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+        "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+        "nummer": 1,
+        "art": "abschlag",
+        "eingang": "2026-10-30",
+        "rechnungsnummerAuftragnehmer": "AN-2026-017 (erfunden)",
+        "gefordert": null,
+        "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b"],
+        "umlagen": [{ "bezeichnung": "Bauwesenversicherung", "satz": "0.50" }],
+        "sicherheitSatz": "5.00",
+        "gewaehrleistungSatz": null,
+        "freigabe": { "zahlbetrag": "8874.40" },
+        "skonto": { "satz": "3.00", "fristTage": 14 },
+        "bauabzugsteuer": true,
+        "zahlungen": [{ "id": "019b7a43-5a00-7000-8000-000000000011", "datum": "2026-11-14", "betrag": "7316.94" }]
+      },
+      "zahlungsstand": {
+        "zahlbetrag": "8874.40",
+        "fristende": "2026-11-13",
+        "mitSkonto": { "skonto": "266.23", "bauabzugsteuer": "1291.23", "auszahlung": "7316.94" },
+        "ohneSkonto": { "skonto": "0.00", "bauabzugsteuer": "1331.16", "auszahlung": "7543.24" },
+        "skontoVerwirklicht": false,
+        "verwirklichterSkonto": "0.00",
+        "bauabzugsteuer": "1331.16",
+        "auszahlung": "7543.24",
+        "summeZahlungen": "7316.94",
+        "offen": "226.30"
+      },
+      "befunde": []
+    },
+    {
+      "name": "ar1-ueberzahlung",
+      "beschreibung": "Zur rechtzeitigen Zahlung kommen am 20.11.2026 noch 50,00: Skonto verwirklicht, 50,00 mehr gezahlt als die Auszahlung (Befund, keine Sperre).",
+      "basis": "ar1",
+      "rechnung": {
+        "id": "019b7708-6eca-7394-aa65-037bd01670db",
+        "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+        "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+        "nummer": 1,
+        "art": "abschlag",
+        "eingang": "2026-10-30",
+        "rechnungsnummerAuftragnehmer": "AN-2026-017 (erfunden)",
+        "gefordert": null,
+        "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b"],
+        "umlagen": [{ "bezeichnung": "Bauwesenversicherung", "satz": "0.50" }],
+        "sicherheitSatz": "5.00",
+        "gewaehrleistungSatz": null,
+        "freigabe": { "zahlbetrag": "8874.40" },
+        "skonto": { "satz": "3.00", "fristTage": 14 },
+        "bauabzugsteuer": true,
+        "zahlungen": [
+          { "id": "019b7a43-5a00-7000-8000-000000000011", "datum": "2026-11-13", "betrag": "7316.94" },
+          { "id": "019b7a43-5a00-7000-8000-000000000012", "datum": "2026-11-20", "betrag": "50.00" }
+        ]
+      },
+      "zahlungsstand": {
+        "zahlbetrag": "8874.40",
+        "fristende": "2026-11-13",
+        "mitSkonto": { "skonto": "266.23", "bauabzugsteuer": "1291.23", "auszahlung": "7316.94" },
+        "ohneSkonto": { "skonto": "0.00", "bauabzugsteuer": "1331.16", "auszahlung": "7543.24" },
+        "skontoVerwirklicht": true,
+        "verwirklichterSkonto": "266.23",
+        "bauabzugsteuer": "1291.23",
+        "auszahlung": "7316.94",
+        "summeZahlungen": "7366.94",
+        "offen": "-50.00"
+      },
+      "befunde": [{ "code": "zahlungen-ueber-auszahlung", "offen": "-50.00" }]
+    },
+    {
+      "name": "ar2-ohne-eingang",
+      "beschreibung": "AR 2 ohne Eingangsdatum: kein Fristende, kein Skonto (Befund), beide Fälle gleich; offen wie in AR 2.",
+      "basis": "ar2",
+      "rechnung": {
+        "id": "019b7708-6ecb-7dc9-a84a-f13ed1a46110",
+        "projektId": "019b7708-6ec0-7044-8c5b-9920386747f5",
+        "auftragsLvId": "019b7708-6ec1-70d9-b161-c989757a7278",
+        "nummer": 2,
+        "art": "abschlag",
+        "eingang": null,
+        "rechnungsnummerAuftragnehmer": "AN-2026-023 (erfunden)",
+        "gefordert": null,
+        "aufmassIds": ["019b7708-6ec8-705e-88ab-a127af67f61b", "019b7708-6ec9-7dbc-a446-887667e54aac"],
+        "umlagen": [{ "bezeichnung": "Bauwesenversicherung", "satz": "0.50" }],
+        "sicherheitSatz": "5.00",
+        "gewaehrleistungSatz": null,
+        "freigabe": { "zahlbetrag": "8570.67" },
+        "vertragsstrafe": { "betrag": "1500.00", "grund": "Zwischenfrist Rohbau um 3 Werktage überschritten (erfunden)" },
+        "skonto": { "satz": "2.00", "fristTage": 10 },
+        "zahlungen": [
+          { "id": "019b7a43-5a00-7000-8000-000000000021", "datum": "2026-12-04", "betrag": "5000.00" },
+          { "id": "019b7a43-5a00-7000-8000-000000000022", "datum": "2026-12-15", "betrag": "3000.00" }
+        ]
+      },
+      "zahlungsstand": {
+        "zahlbetrag": "8570.67",
+        "fristende": null,
+        "mitSkonto": { "skonto": "0.00", "bauabzugsteuer": "0.00", "auszahlung": "8570.67" },
+        "ohneSkonto": { "skonto": "0.00", "bauabzugsteuer": "0.00", "auszahlung": "8570.67" },
+        "skontoVerwirklicht": false,
+        "verwirklichterSkonto": "0.00",
+        "bauabzugsteuer": "0.00",
+        "auszahlung": "8570.67",
+        "summeZahlungen": "8000.00",
+        "offen": "570.67"
+      },
+      "befunde": [{ "code": "skonto-ohne-eingang" }]
+    }
+  ],
+  "herleitung": {
+    "ar1": [
+      "Kette wie M4 AR 1 (Blatt 1 vor der Korrektur): Brutto kumuliert 9.390,89; Umlage 0,50 % = 46,95; keine Vertragsstrafe 0,00; Einbehalt 5 % = 469,54; keine früheren; Zahlbetrag 9.390,89 − 46,95 − 0,00 − 469,54 = 8.874,40. Skonto und Bauabzugsteuer ändern den Zahlbetrag nicht (sie stehen hinter ihm, D-72), darum bleibt der eingefrorene Betrag von M4.",
+      "Fristende: Eingang Fr 30.10.2026 + 14 Kalendertage; der 31.10. ist Tag 1, der 13.11.2026 (Fr) Tag 14.",
+      "Möglicher Skonto: 8.874,40 × 3 % = 266,232 → 266,23.",
+      "Mit Skonto: Basis der Bauabzugsteuer 8.874,40 − 266,23 = 8.608,17; × 15 % = 1.291,2255 → 1.291,23; Auszahlung 8.608,17 − 1.291,23 = 7.316,94.",
+      "Ohne Skonto: 8.874,40 × 15 % = 1.331,16 (genau); Auszahlung 8.874,40 − 1.331,16 = 7.543,24.",
+      "Zahlung 7.316,94 am 13.11.2026 = Fristende (rechtzeitig) und ≥ 7.316,94: Skonto verwirklicht; es gilt der Fall mit Skonto.",
+      "Offen: 8.874,40 − 266,23 − 1.291,23 − 7.316,94 = 0,00."
+    ],
+    "ar2": [
+      "Kette wie M4 AR 2 nach der Korrektur, mit Vertragsstrafe: Brutto kumuliert 20.047,70 (MwSt-Basis unverändert); Umlage 0,50 % = 100,24 und Einbehalt 5 % = 1.002,39, beide weiter auf das Brutto kumuliert; Vertragsstrafe 1.500,00 brutto (kumuliert; AR 1 hatte keine); frühere eingefrorene Zahlbeträge 8.874,40.",
+      "Zahlbetrag: 20.047,70 − 100,24 − 1.500,00 − 1.002,39 − 8.874,40 = 8.570,67 (ohne Strafe 10.070,67 wie M4).",
+      "Fristende: Eingang Fr 27.11.2026 + 10 Kalendertage = Mo 07.12.2026 (28.11. Tag 1, 30.11. Tag 3, 01.12. Tag 4, 07.12. Tag 10).",
+      "Möglicher Skonto: 8.570,67 × 2 % = 171,4134 → 171,41. Bauabzugsteuer aus: 0,00 in beiden Fällen.",
+      "Mit Skonto: Auszahlung 8.570,67 − 171,41 = 8.399,26. Ohne Skonto: 8.570,67.",
+      "Zahlungen bis zum Fristende: 5.000,00 (04.12.) < 8.399,26: Skonto nicht verwirklicht (Teilzahlung); die Zahlung vom 15.12. (3.000,00) liegt nach der Frist. Es gilt der Fall ohne Skonto.",
+      "Summe der Zahlungen 8.000,00; offen 8.570,67 − 0,00 − 0,00 − 8.000,00 = 570,67."
+    ],
+    "varianten": [
+      "ar1-ohne-neue-felder: kein Skonto, keine Steuer, keine Zahlungen; Fristende null; beide Fälle 8.874,40; offen 8.874,40 (eine Rechnung vor v1.7b rechnet wie bisher).",
+      "ar1-zahlung-nach-fristende: Zahlung 7.316,94 am 14.11.2026 > Fristende 13.11.: bis zum Fristende 0,00 gezahlt, Skonto nicht verwirklicht; Steuer 1.331,16, Auszahlung 7.543,24; offen 8.874,40 − 0,00 − 1.331,16 − 7.316,94 = 226,30.",
+      "ar1-ueberzahlung: bis zum Fristende 7.316,94 ≥ 7.316,94, verwirklicht; Summe 7.316,94 + 50,00 = 7.366,94; offen 8.874,40 − 266,23 − 1.291,23 − 7.366,94 = −50,00 < 0 mit Zahlungen: Befund zahlungen-ueber-auszahlung.",
+      "ar2-ohne-eingang: Skonto vereinbart, kein Eingang: Fristende null, möglicher Skonto 0,00 (D-128.4), Befund skonto-ohne-eingang; beide Fälle 8.570,67; offen 570,67."
+    ]
+  }
+}
