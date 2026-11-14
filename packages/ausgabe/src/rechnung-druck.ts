@@ -6,7 +6,7 @@
 // nach dem Zahlbetrag die Zahlungsfreigabe mit beiden Fällen des Skontos, der Bauabzugsteuer „an das Finanzamt“, der
 // Auszahlung, den Zahlungen und dem offenen Betrag (`Zahlungsstand` aus `vertrag`).
 
-import { formatiereBetragDe, formatiereProzentDe, vorzeichen } from '@tethys/dezimal';
+import { NULL_BETRAG, formatiereBetragDe, formatiereProzentDe, vorzeichen } from '@tethys/dezimal';
 import { BAUABZUGSTEUER_SATZ } from '@tethys/vertrag';
 import type {
   AufmassKopf,
@@ -123,6 +123,18 @@ const abzugWert = (b: Betrag): BerichtWert => ({
 });
 
 /**
+ * Der Stand des Skontos in Worten. Ohne Uhr (A2) weiß der Druck nicht, ob die Skontofrist schon abgelaufen ist: „nicht
+ * verwirklicht“ steht nur da, wenn eine Zahlung nach dem Fristende erfasst ist (die Frist ist dann sicher vorbei), sonst „noch
+ * nicht verwirklicht“, denn eine Zahlung in der Frist kann ihn noch verwirklichen.
+ */
+function skontoBezeichnung(r: Rechnung, zs: Zahlungsstand): string {
+  if (zs.skontoVerwirklicht) return 'Skonto (verwirklicht)';
+  const fristende = zs.fristende;
+  const fristVorbei = fristende !== null && (r.zahlungen ?? []).some((z) => z.datum > fristende);
+  return fristVorbei ? 'Skonto (nicht verwirklicht)' : 'Skonto (noch nicht verwirklicht)';
+}
+
+/**
  * Die Zahlungsfreigabe nach D-72: beide Fälle des Skontos (wenn es ein Fristende gibt), dann der geltende Fall bis zum
  * offenen Betrag und die Zahlungen nach Datum. Skonto und Bauabzugsteuer mindern nur die Auszahlung, nie den Zahlbetrag.
  */
@@ -184,10 +196,7 @@ function zahlungsfreigabe(r: Rechnung, zs: Zahlungsstand): BerichtBlock[] {
       ...(skonto === undefined
         ? []
         : [
-            abzug(
-              zs.skontoVerwirklicht ? 'Skonto (verwirklicht)' : 'Skonto (nicht verwirklicht)',
-              zs.verwirklichterSkonto,
-            ),
+            abzug(skontoBezeichnung(r, zs), zs.verwirklichterSkonto),
           ]),
       ...(steuer ? [abzug(BAUABZUGSTEUER, zs.bauabzugsteuer)] : []),
       betragFeld(AUSZAHLUNG, zs.auszahlung, true),
@@ -331,7 +340,7 @@ export function baueRechnungspruefungModell(e: RechnungspruefungEingabe): Berich
                   r.vertragsstrafe === undefined
                     ? 'Vertragsstrafe'
                     : `Vertragsstrafe (${r.vertragsstrafe.grund})`,
-                  kette.vertragsstrafe ?? r.vertragsstrafe?.betrag ?? ('0.00' as Betrag),
+                  kette.vertragsstrafe ?? r.vertragsstrafe?.betrag ?? NULL_BETRAG,
                 ),
               ]
             : []),

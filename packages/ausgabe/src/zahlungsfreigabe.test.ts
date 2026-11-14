@@ -100,7 +100,8 @@ describe('Zahlungsfreigabe: Modell', () => {
     const f = z.filter((x) => x.art === 'felder');
     expect(felder(f[0])).toEqual([
       ['Zahlbetrag (eingefroren)', '22,25 €'],
-      ['Skonto (nicht verwirklicht)', '0,00 €'],
+      // Keine Zahlung nach dem Fristende: Die Frist kann noch laufen, der Skonto ist nur „noch nicht“ verwirklicht.
+      ['Skonto (noch nicht verwirklicht)', '0,00 €'],
       ['Bauabzugsteuer 15,00 % an das Finanzamt', '−3,34 €'],
       ['Auszahlung an den Auftragnehmer', '18,91 €'],
       ['Summe der Zahlungen', '−10,00 €'],
@@ -340,6 +341,7 @@ describe('Zahlungsfreigabe: Sollwerte der Fixture typisch-zahlungen', () => {
       'Bei Zahlung bis 07.12.2026',
       'Skonto (2,00 %) −171,41 0,00',
       'Auszahlung an den Auftragnehmer 8.399,26 8.570,67',
+      // Die Zahlung vom 15.12. liegt nach dem Fristende 07.12.: Der Skonto ist endgültig nicht verwirklicht.
       'Skonto (nicht verwirklicht) 0,00 €',
       'Summe der Zahlungen −8.000,00 €',
       'Offen 570,67 €',

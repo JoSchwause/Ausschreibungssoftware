@@ -8,7 +8,7 @@
 // - Basis ist der eingefrorene Zahlbetrag, sobald die Rechnung freigegeben ist, sonst der geprüfte (Vorschau; D-128.8). Die
 //   Prüfung übergibt ihn (`rechnungPruefen`).
 // - Möglicher Skonto round(Zahlbetrag × Satz / 100, 2), 0,00 bei Zahlbetrag ≤ 0,00 oder ohne Fristende (kein Eingang: Befund).
-// - Bauabzugsteuer je Fall round((Zahlbetrag − Skonto des Falls) × 15 / 100, 2), 0,00 bei einer Basis ≤ 0,00 (D-93).
+// - Bauabzugsteuer je Auszahlungsszenario round((Zahlbetrag − Skonto des Szenarios) × 15 / 100, 2), 0,00 bei einer Basis ≤ 0,00 (D-93).
 // - Verwirklicht: möglicher Skonto > 0,00 und Σ Zahlungen mit Datum ≤ Fristende ≥ Auszahlung mit Skonto.
 // - Fristende = Eingang + Frist in Kalendertagen; der Eingangstag zählt nicht, keine Verschiebung auf Werktage. Gerechnet
 //   ohne `Date` (A2), wie `datumFehler` in `form.ts`. Ein Eingang, der kein Tag ist, gilt wie kein Eingang (der Ausführer
@@ -33,12 +33,8 @@ import type {
   Zahlungsbefund,
   Zahlungsstand,
 } from '@tethys/vertrag';
-import { datumFehler } from './form';
+import { datumFehler, tageImMonat } from './form';
 
-/** Tage eines Monats im proleptischen gregorianischen Kalender. */
-const TAGE = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
-const schaltjahr = (j: number): boolean => (j % 4 === 0 && j % 100 !== 0) || j % 400 === 0;
-const tageImMonat = (j: number, m: number): number => (m === 2 && schaltjahr(j) ? 29 : (TAGE[m - 1] ?? 0));
 const zweistellig = (n: number): string => String(n).padStart(2, '0');
 
 /**
@@ -68,8 +64,8 @@ export function plusKalendertage(datum: string, tage: number): Kalenderdatum | n
   return `${String(j).padStart(4, '0')}-${zweistellig(m)}-${zweistellig(t)}` as Kalenderdatum;
 }
 
-/** Ein Fall: Skonto, Bauabzugsteuer (0,00 bei Basis ≤ 0,00 oder ausgeschaltet), Auszahlung. */
-function szenario(zahlbetrag: Betrag, skonto: Betrag, mitSteuer: boolean): Auszahlungsszenario {
+/** Ein Auszahlungsszenario: Skonto, Bauabzugsteuer (0,00 bei Basis ≤ 0,00 oder ausgeschaltet), Auszahlung. */
+function auszahlungsszenario(zahlbetrag: Betrag, skonto: Betrag, mitSteuer: boolean): Auszahlungsszenario {
   const basis = subtrahiere(zahlbetrag, skonto);
   const bauabzugsteuer =
     mitSteuer && vorzeichen(basis) > 0 ? prozentVon(basis, BAUABZUGSTEUER_SATZ) : NULL_BETRAG;
@@ -94,16 +90,16 @@ export function zahlungsstandBerechnen(
       ? prozentVon(zahlbetrag, skonto.satz)
       : NULL_BETRAG;
   const steuer = rechnung.bauabzugsteuer === true;
-  const mitSkonto = szenario(zahlbetrag, moeglich, steuer);
-  const ohneSkonto = szenario(zahlbetrag, NULL_BETRAG, steuer);
+  const mitSkonto = auszahlungsszenario(zahlbetrag, moeglich, steuer);
+  const ohneSkonto = auszahlungsszenario(zahlbetrag, NULL_BETRAG, steuer);
   const zahlungen = rechnung.zahlungen ?? [];
   const summeZahlungen = summiereBetraege(zahlungen.map((z) => z.betrag));
   const bisFristende = summiereBetraege(
     zahlungen.filter((z) => fristende !== null && z.datum <= fristende).map((z) => z.betrag),
   );
   const skontoVerwirklicht = vorzeichen(moeglich) > 0 && vergleiche(bisFristende, mitSkonto.auszahlung) >= 0;
-  const fall = skontoVerwirklicht ? mitSkonto : ohneSkonto;
-  const offen = subtrahiere(fall.auszahlung, summeZahlungen);
+  const geltendes = skontoVerwirklicht ? mitSkonto : ohneSkonto;
+  const offen = subtrahiere(geltendes.auszahlung, summeZahlungen);
   if (zahlungen.length > 0 && vorzeichen(offen) < 0)
     befunde.push({ code: 'zahlungen-ueber-auszahlung', offen });
   return {
@@ -113,9 +109,9 @@ export function zahlungsstandBerechnen(
       mitSkonto,
       ohneSkonto,
       skontoVerwirklicht,
-      verwirklichterSkonto: fall.skonto,
-      bauabzugsteuer: fall.bauabzugsteuer,
-      auszahlung: fall.auszahlung,
+      verwirklichterSkonto: geltendes.skonto,
+      bauabzugsteuer: geltendes.bauabzugsteuer,
+      auszahlung: geltendes.auszahlung,
       summeZahlungen,
       offen,
     },

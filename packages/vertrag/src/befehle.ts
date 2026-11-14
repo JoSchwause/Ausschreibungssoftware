@@ -130,6 +130,9 @@ export interface ProjektLoeschen {
  *   im ChangeSet und nie im Protokoll. Im Protokoll steht er mit dem Projekt als Aggregat (`{ art: 'projekt' }`).
  * - Wie bei `ProjektLoeschen` (D-31.1) geht das Protokoll des Projekts mit, und der Eintrag des Löschens bleibt nicht stehen;
  *   das Undo legt das Protokoll aus dem Bestand zurück und schreibt danach wie jeder Befehl seinen `Rueckgaengig`-Eintrag.
+ * - Vergleich beim Löschen (D-104, Präzisierung von D-160.5): Projekt und Aggregate müssen dem `bestand.vorher` gleichen, das
+ *   gespeicherte Protokoll muss nur mit `bestand.vorher.protokoll` **beginnen**; angehängte Einträge sind erlaubt. Sonst
+ *   scheiterte das Wiederholen nach einem Undo immer, denn das Undo hängt seinen `Rueckgaengig`-Eintrag an (D-160.6).
  * - Die Einstellungen des Geräts bleiben unberührt; die Bytes der Modelldateien bleiben in der Ablage (`Modelldateiablage`:
  *   freigegeben erst beim nächsten Öffnen, wenn kein Modell sie mehr nennt, also nie, solange ein Undo-Schritt sie braucht).
  */
