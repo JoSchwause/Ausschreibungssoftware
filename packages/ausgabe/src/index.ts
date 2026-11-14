@@ -76,7 +76,7 @@ export { baueAufmassblattModell } from './aufmass-druck';
 export type { AufmassblattEingabe } from './aufmass-druck';
 export { baueSollIstModell } from './soll-ist-druck';
 export type { SollIstEingabe } from './soll-ist-druck';
-export { baueRechnungspruefungModell } from './rechnung-druck';
+export { baueRechnungspruefungModell, skontoStandText } from './rechnung-druck';
 export type { RechnungspruefungEingabe } from './rechnung-druck';
 export type { VergabevorschlagEingabe } from './vergabevorschlag-druck';
 export {

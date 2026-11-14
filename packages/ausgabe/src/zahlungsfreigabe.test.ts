@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Betrag, Kalenderdatum, Prozent, Rechnung, ZahlungId, Zahlungsstand } from '@tethys/vertrag';
-import { baueRechnungspruefungModell, erzeugeRechnungspruefungPdf } from './index';
+import { baueRechnungspruefungModell, erzeugeRechnungspruefungPdf, skontoStandText } from './index';
 import type { BerichtBlock, BerichtZelle, RechnungspruefungEingabe } from './index';
 import { alsText, liesPdf } from './pdftext';
 import { schriftenAusDateien } from './schriften-node';
@@ -100,7 +100,7 @@ describe('Zahlungsfreigabe: Modell', () => {
     const f = z.filter((x) => x.art === 'felder');
     expect(felder(f[0])).toEqual([
       ['Zahlbetrag (eingefroren)', '22,25 €'],
-      // Keine Zahlung nach dem Fristende: Die Frist kann noch laufen, der Skonto ist nur „noch nicht“ verwirklicht.
+      // Druckdatum 21.11. vor dem Fristende 26.11.: Die Frist läuft noch, der Skonto ist „noch nicht“ verwirklicht.
       ['Skonto (noch nicht verwirklicht)', '0,00 €'],
       ['Bauabzugsteuer 15,00 % an das Finanzamt', '−3,34 €'],
       ['Auszahlung an den Auftragnehmer', '18,91 €'],
@@ -341,7 +341,7 @@ describe('Zahlungsfreigabe: Sollwerte der Fixture typisch-zahlungen', () => {
       'Bei Zahlung bis 07.12.2026',
       'Skonto (2,00 %) −171,41 0,00',
       'Auszahlung an den Auftragnehmer 8.399,26 8.570,67',
-      // Die Zahlung vom 15.12. liegt nach dem Fristende 07.12.: Der Skonto ist endgültig nicht verwirklicht.
+      // Druckdatum 16.12. nach dem Fristende 07.12.: Die Frist ist abgelaufen, der Skonto nicht verwirklicht.
       'Skonto (nicht verwirklicht) 0,00 €',
       'Summe der Zahlungen −8.000,00 €',
       'Offen 570,67 €',
@@ -350,5 +350,21 @@ describe('Zahlungsfreigabe: Sollwerte der Fixture typisch-zahlungen', () => {
     ])
       expect(t, s).toContain(s);
     expect(t).not.toContain('Bauabzugsteuer 15,00 %');
+  });
+});
+
+describe('skontoStandText (PA2): „noch nicht“, solange die Frist läuft, „nicht“ erst danach', () => {
+  const zs = { skontoVerwirklicht: false, fristende: '2026-11-26' as Kalenderdatum };
+  it('Stichtag bis zum Fristende: noch nicht verwirklicht; danach: nicht verwirklicht', () => {
+    expect(skontoStandText(zs, [], '2026-11-21')).toBe('Skonto (noch nicht verwirklicht)');
+    expect(skontoStandText(zs, [], '2026-11-26')).toBe('Skonto (noch nicht verwirklicht)');
+    expect(skontoStandText(zs, [], '2026-11-27')).toBe('Skonto (nicht verwirklicht)');
+  });
+  it('ohne Stichtag zeigt eine Zahlung nach dem Fristende, dass die Frist vorbei ist; verwirklicht bleibt verwirklicht', () => {
+    expect(skontoStandText(zs, [{ datum: '2026-11-20' }], null)).toBe('Skonto (noch nicht verwirklicht)');
+    expect(skontoStandText(zs, [{ datum: '2026-12-01' }], null)).toBe('Skonto (nicht verwirklicht)');
+    expect(skontoStandText({ ...zs, skontoVerwirklicht: true }, [], '2027-01-01')).toBe(
+      'Skonto (verwirklicht)',
+    );
   });
 });
