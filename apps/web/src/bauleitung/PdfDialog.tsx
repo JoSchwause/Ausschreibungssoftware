@@ -9,6 +9,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { herunterladenBytes } from '../ausgabe/datei';
 import { bauleitungPdf } from './pdf-lauf';
 import type { Druckauftrag } from './pdf-worker';
+import { texte as fehlerTexte } from '../fehler/texte';
 import { texte } from './texte';
 
 type Lage =
@@ -46,8 +47,9 @@ export function PdfDialog({
       herunterladenBytes(dateiname, bytes, 'application/pdf');
       zeige({ titel: t.fertig, beschreibung: dateiname, art: 'erfolg' });
       onSchliessen();
-    } catch (e) {
-      setLage({ art: 'fehler', meldung: e instanceof Error ? e.message : String(e) });
+    } catch {
+      // Ticket 155 (D-94): kein Rohtext der Ausnahme, sondern der nächste Schritt (wie der LV-Druck, Ticket 132).
+      setLage({ art: 'fehler', meldung: fehlerTexte.pdf });
     }
   };
 
