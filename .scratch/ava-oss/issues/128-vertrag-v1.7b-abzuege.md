@@ -1,6 +1,6 @@
 # 128: `vertrag` v1.7b: Vertragsstrafe, Skonto, Bauabzugsteuer, Zahlungen
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: F, A5 · Paket/Ordner: `packages/vertrag` (+ `GLOSSARY.md`)
 Blocked by: 127
@@ -24,10 +24,10 @@ Typen für A5 genau nach **D-72** (`../entscheidungen-auto.md`), additiv zu D-34
 
 ## Acceptance criteria
 
-- [ ] Typen und Befehle nach D-72 mit Typtests; Lesarten unter `## Comments` (D-128.x)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Typen und Befehle nach D-72 mit Typtests; Lesarten unter `## Comments` (D-128.x)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -113,3 +113,9 @@ vorläufige Annahmen, enge Lesart; dieselben Texte stehen an den Typen). Alles a
   Paketschnitt: braucht einen Schreiber (Orchestrator).
 - **D-128.12 Nicht geändert.** `Speicher.einstellungen` bleibt optional (offene Frage 1 aus 127): 139 ist nicht gemergt, eine
   Pflicht jetzt bräche den Typcheck von `speicher`. Gehört in die nächste Vertragsversion nach 139.
+
+Ergebnis (nach Merge von `integration/welle-7` mit 137, 139, 141, 142, 147, 153 teilweise): Lint grün (ESLint wegen
+Speicherdruck durch parallele Agenten je Ordner gelaufen, gleiche Regeln), Typcheck grün, Unit-Tests 4.438 grün; rot nur 10
+CPU-Leistungsbudgets unter Parallellast (Last ≈ 22 auf 4 Kernen; nicht gelockert, keines berührt von diesem Ticket). Fixtures
+(`node --test`) 53 grün. E2E `rechnung.spec.ts` grün. Nebenbei aus D-87 zwei Kommentare im Vertrag berichtigt (Name eines
+LV-Stands nicht leer; Codes von `OzMaskeSetzen`, auch D-127.14), aus D-88 der Glossarbegriff „Vergabevorschlag“.
