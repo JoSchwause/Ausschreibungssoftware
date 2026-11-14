@@ -250,6 +250,8 @@ export const texte = {
     // v1.6: mechanisch angepasst, Folgeticket 120 (Mängel in der App; Text dort prüfen)
     'statuswechsel-unzulaessig': 'Dieser Statuswechsel ist für den Mangel nicht zulässig.',
     'verweise-vorhanden': 'Es verweisen noch andere Einträge darauf. Diese bitte zuerst entfernen.',
+    // v1.7b: mechanisch angepasst, Folgeticket 152 (Zahlungen in der App; Text dort prüfen)
+    'zahlungen-vorhanden': 'Zur Rechnung sind Zahlungen erfasst. Zuerst die Zahlungen löschen.',
   } satisfies Record<Befehlsfehlercode, string>,
   speicherfehler: {
     'nicht-gefunden': 'Der Eintrag wurde im Speicher nicht gefunden.',

@@ -163,6 +163,17 @@ import type { Druckprofil, Einstellungen } from './einstellungen';
 import type { BieterId } from './marken';
 import type { Projekt } from './modell';
 import type { EinstellungenProtokolleintrag } from './speicher';
+// v1.7b (Ticket 128)
+import type {
+  BauabzugsteuerSetzen,
+  SkontoSetzen,
+  VertragsstrafeSetzen,
+  ZahlungAendern,
+  ZahlungErfassen,
+  ZahlungLoeschen,
+} from './befehle';
+import type { Kalenderdatum, ZahlungId } from './marken';
+import type { Zahlung, Zahlungsbefund, Zahlungsstand } from './zahlung';
 
 const lvId = '019b76e9-0000-7000-8000-000000000001' as LeistungsverzeichnisId;
 const titelId = '019b76e9-0000-7000-8000-000000000002' as TitelId;
@@ -2677,3 +2688,94 @@ export const beispielProjektdateiV17a: Projektdatei = {
   protokoll: [],
   einstellungen: beispielEinstellungen,
 };
+
+// --- v1.7b (Ticket 128; A5, D-72) -----------------------------------------------------------------------------------
+
+/**
+ * Vertragsstrafe (D-72): Rechnung 2 mit einer Vertragsstrafe von 1,00 €. Herleitung der Kette (an `beispielRechnung2`):
+ * Brutto kumuliert 59,32; Umlage 0,30; Vertragsstrafe 1,00; Einbehalt round(59,32 × 5 %) = 2,97 (die Basis bleibt das
+ * Brutto kumuliert); frühere Zahlbeträge 53,42; Zahlbetrag 59,32 − 0,30 − 1,00 − 2,97 − 53,42 = 1,63 (ohne Strafe 2,63).
+ */
+export const beispielRechnung2MitVertragsstrafe: Rechnung = {
+  ...beispielRechnung2,
+  vertragsstrafe: { betrag: '1.00' as Betrag, grund: 'Zwischenfrist Rohbau um einen Werktag überschritten' },
+};
+
+const zahlungId = '019b76e9-0000-7000-8000-000000000901' as ZahlungId;
+
+/** Eine Zahlung auf Rechnung 1, einen Tag vor dem Fristende des Skontos: genau die Auszahlung mit Skonto. */
+export const beispielZahlung: Zahlung = {
+  id: zahlungId,
+  datum: '2026-11-18' as Kalenderdatum,
+  betrag: '44.05' as Betrag,
+};
+
+/**
+ * Rechnung 1 (freigegeben, Zahlbetrag 53,42 eingefroren, Eingang 05.11.2026) mit 3 % Skonto in 14 Tagen, eingeschalteter
+ * Bauabzugsteuer und einer Zahlung. Skonto und Bauabzugsteuer wurden vor der Freigabe gesetzt, die Zahlung danach erfasst.
+ */
+export const beispielRechnungMitZahlung: Rechnung = {
+  ...beispielRechnung1,
+  skonto: { satz: '3.00' as Prozent, fristTage: 14 },
+  bauabzugsteuer: true,
+  zahlungen: [beispielZahlung],
+};
+
+/**
+ * Zahlungsstand zu `beispielRechnungMitZahlung` (D-72; jeder Schritt auf 2 Stellen, N2): Fristende 05.11. + 14 Tage =
+ * 19.11.2026 (der Eingangstag zählt nicht). Möglicher Skonto round(53,42 × 3 %) = 1,60 (1,6026). Mit Skonto:
+ * Bauabzugsteuer round((53,42 − 1,60) × 15 %) = round(7,773) = 7,77, Auszahlung 53,42 − 1,60 − 7,77 = 44,05. Ohne Skonto:
+ * Bauabzugsteuer round(53,42 × 15 %) = round(8,013) = 8,01, Auszahlung 45,41. Die Zahlung vom 18.11. (44,05) erreicht die
+ * Auszahlung mit Skonto bis zum Fristende: verwirklicht. Offen 53,42 − 1,60 − 7,77 − 44,05 = 0,00.
+ */
+export const beispielZahlungsstand: Zahlungsstand = {
+  zahlbetrag: '53.42' as Betrag,
+  fristende: '2026-11-19' as Kalenderdatum,
+  mitSkonto: { skonto: '1.60' as Betrag, bauabzugsteuer: '7.77' as Betrag, auszahlung: '44.05' as Betrag },
+  ohneSkonto: { skonto: '0.00' as Betrag, bauabzugsteuer: '8.01' as Betrag, auszahlung: '45.41' as Betrag },
+  skontoVerwirklicht: true,
+  verwirklichterSkonto: '1.60' as Betrag,
+  bauabzugsteuer: '7.77' as Betrag,
+  auszahlung: '44.05' as Betrag,
+  summeZahlungen: '44.05' as Betrag,
+  offen: '0.00' as Betrag,
+};
+
+/** Die Befunde des Zahlungsstands, je einer (das zweite: 0,50 € mehr gezahlt als die geltende Auszahlung). */
+export const beispielZahlungsbefunde: readonly Zahlungsbefund[] = [
+  { code: 'skonto-ohne-eingang' },
+  { code: 'zahlungen-ueber-auszahlung', offen: '-0.50' as Betrag },
+];
+
+/** ChangeSet zu `ZahlungErfassen` an Rechnung 1: die ganze Rechnung, nur `zahlungen` ändert sich, die Freigabe bleibt. */
+export const beispielChangeSetZahlungErfassen: RechnungChangeSet = {
+  art: 'rechnung',
+  rechnungId: beispielRechnung1.id,
+  rechnung: { vorher: beispielRechnung1, nachher: { ...beispielRechnung1, zahlungen: [beispielZahlung] } },
+};
+
+/** Freigabe aufheben an einer Rechnung mit Zahlungen (Q5). */
+export const beispielFehlerFreigabeAufhebenMitZahlungen: Befehlsfehler = {
+  code: 'zahlungen-vorhanden',
+  meldung: 'RechnungsfreigabeAufheben: Zur Rechnung 1 ist 1 Zahlung erfasst.',
+};
+
+/** Je neuem Befehl ein Beispiel (Rechnung 2 vor der Freigabe; Zahlungen an Rechnung 1). */
+export const beispieleV17b: readonly [
+  VertragsstrafeSetzen,
+  SkontoSetzen,
+  BauabzugsteuerSetzen,
+  ZahlungErfassen,
+  ZahlungAendern,
+  ZahlungLoeschen,
+] = [
+  {
+    art: 'VertragsstrafeSetzen',
+    vertragsstrafe: beispielRechnung2MitVertragsstrafe.vertragsstrafe ?? null,
+  },
+  { art: 'SkontoSetzen', skonto: { satz: '3.00' as Prozent, fristTage: 14 } },
+  { art: 'BauabzugsteuerSetzen', bauabzugsteuer: true },
+  { art: 'ZahlungErfassen', zahlung: beispielZahlung },
+  { art: 'ZahlungAendern', zahlung: { ...beispielZahlung, betrag: '45.41' as Betrag } },
+  { art: 'ZahlungLoeschen', zahlungId },
+];

@@ -8,6 +8,7 @@ import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
 import type { LvZustand, Projekt } from '@tethys/vertrag';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { texte as fehlerTexte } from '../fehler/texte'; // Ticket 132
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { herunterladenBytes } from './datei';
 import { DruckProfilFeld, profilAnfang, type ProfilAnfang } from './DruckProfilFeld'; // Ticket 90
@@ -137,10 +138,10 @@ export function PdfAusgabe({ zustand }: { zustand: LvZustand }): ReactElement {
       zeige({ titel: texte.pdf.fertig, beschreibung: name, art: 'erfolg' });
       setOffen(false);
       setLage({ art: 'bereit' });
-    } catch (e) {
+    } catch {
       if (lauf.current !== neu) return;
       lauf.current = null;
-      setLage({ art: 'fehler', meldung: e instanceof Error ? e.message : String(e) });
+      setLage({ art: 'fehler', meldung: fehlerTexte.pdf }); // Ticket 132: kein Rohtext der Ausnahme (B-26)
     }
   };
 

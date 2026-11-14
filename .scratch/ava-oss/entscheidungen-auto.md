@@ -814,3 +814,17 @@ Question: 144 liest GAEB 90 aus frei zugänglichen Quellen (6 Quellen, 9 unsiche
 Decision: 144 bestätigt; die unsicheren Punkte und die nicht gelesenen Merkmale nennt der Bericht (zu D-71). Für die Review-Behebung 159 gesammelt: `ausgabe/ExcelBefunde.tsx` zeigt Befundcodes als Text; unbenutzte Texte `start.gaeb.projektname`, `angelegt`, `zumProjekt` in `hilfe/texte.ts`. Der Orchestrator hat `.gitattributes` für die GAEB-90/2000-Fixtures ergänzt (`-text`).
 Reason: Konservativ (Befund statt Raten) nach D-71; Reste sind Einzeiler.
 Reversible: yes  Touches: packages/gaeb, GLOSSARY.md, .gitattributes, Ticket 159
+
+## D-93 `vertrag` v1.7b (A5) gemergt; Speicherteil geht an 143
+Welle 7 · Ticket 128 (Folge 143, 152, 153) · decided by: orchestrator
+Question: (1) D-128.5: Bauabzugsteuer 0,00, wenn ihre Basis ≤ 0 ist (D-72 sagt das nur für Skonto). (2) Der Rechnungsdekoder in `speicher` (139) kennt nur die Schlüssel bis v1.7a und weist Rechnungen mit den neuen Feldern ab; 143 nennt `speicher` nicht. (3) `Speicher.einstellungen` bleibt optional.
+Decision: (1) Bestätigt: keine negative Steuer, keine Erstattung durch das Finanzamt in v1; steht auf der Seite „Annahmen“ mit D-72. (2) 143 übernimmt `speicher` als zweites Paket (derzeit kein anderer Schreiber dort, P2 bleibt gewahrt): Dekoder für `vertragsstrafe`, `skonto`, `bauabzugsteuer`, `zahlungen`, Prüfung in der Dateimigration (Schema 7 trägt die Felder optional, kein neues Schema), `konflikt` für „Zahlung nur an freigegebener Rechnung“. (3) Bleibt optional bis zur nächsten Vertragsversion (nach der Welle). Der Opus-Review von v1.7b läuft im Wellen-Review mit (die Formen folgen D-72 wörtlich, alles optional).
+Reason: Ein Schreiber, ein Ticket, kein zusätzlicher Agentenplatz; der Tor-Weg (Rechnung mit Skonto) braucht den Speicher.
+Reversible: yes  Touches: packages/abrechnung, speicher, fixtures, Ticket 143
+
+## D-94 Fehlerfestigkeit gemergt; wackeliger Test `bim-tastatur.spec.ts:135` an 155
+Welle 7 · Ticket 132 (Folge 155, 158) · decided by: orchestrator
+Question: 132 ist fertig bis auf „volle Web-E2E zweimal hintereinander grün“: seit dem Merge von 131/133 fällt zeitweise `bim-tastatur.spec.ts:135` (Fokus einer Option im Auswahlfeld), auch ohne die Änderungen aus 132 (2 von 4 mit `--repeat-each 4`). Rohe Fehlertexte beim PDF stehen noch in `bauzeit/PlanDrucken.tsx:79` und `bauleitung/PdfDialog.tsx:50`.
+Decision: 132 gemergt. Den wackeligen Test und die zwei PDF-Fehlertexte übernimmt 155 (Besitzer von `bim/`, `bauzeit/`, `bauleitung/`): Ursache finden, nicht den Test abschwächen. Das Kriterium „zweimal grün“ prüft das Tor-Ticket 158 auf dem Endstand. `nachtrag.spec.ts:170` prüft einen festen Hinweis, keine Meldung, und bleibt.
+Reason: Der Fehler liegt nicht in 132; ein Schreiber je Ordner.
+Reversible: yes  Touches: apps/web/src/fehler, Ticket 155, 158

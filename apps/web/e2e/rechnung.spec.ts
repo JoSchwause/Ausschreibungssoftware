@@ -12,7 +12,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { Aufmass, AuftragsLeistungsverzeichnisId, ProjektId } from '@tethys/vertrag';
 import { fixtureInhalt } from './fixture-inhalt';
-import { betragDe, projektAnlegen } from './hilfen';
+import { betragDe, erwarteMeldung, projektAnlegen } from './hilfen';
 import { werkzeug } from './werkzeuge';
 import {
   M4_BIETER,
@@ -209,11 +209,7 @@ test('Rechnungen: AR 1 prüfen und freigeben, AR 2 zieht AR 1 ab, XRechnung einl
     .getByRole('dialog', { name: 'Rechnung 2 freigeben' })
     .getByRole('button', { name: 'Freigeben' })
     .click();
-  await expect(
-    page
-      .getByRole('region', { name: /^Meldungen/ })
-      .getByText(/Freigaben gehen nur in der Reihenfolge der Rechnungsnummern/),
-  ).toBeVisible();
+  await erwarteMeldung(page, 'Freigaben gehen nur in der Reihenfolge der Rechnungsnummern');
   await expect(page.getByTestId('freigabe')).toHaveText('Offen (nicht freigegeben)');
   await page.evaluate(() => {
     window.tethysTest?.speicherFehler(null);

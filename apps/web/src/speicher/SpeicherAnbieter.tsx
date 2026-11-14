@@ -2,7 +2,9 @@
 // Öffnet den Speicher (SQLite-WASM im OPFS, im Worker) einmal für die App und stellt die Umgebung des Befehlswegs
 // bereit. Ist die Datenbank in einem anderen Tab offen (`gesperrt`), erscheint eine verständliche Meldung statt einer
 // leeren Fläche (E-14). Beim Neuladen gibt der alte Worker die Sperre erst kurz nach dem Start der neuen Seite frei;
-// deshalb versucht die App es einige Male, bevor sie die Meldung zeigt.
+// deshalb versucht die App es einige Male, bevor sie die Meldung zeigt. Scheitert das Öffnen aus einem anderen Grund,
+// nennt die Meldung Ursache und nächsten Schritt (E13, B-24). Solange der Speicher offen ist, kennt ihn die Fehlergrenze
+// für die Notfallsicherung.
 
 import { speicherOeffnen } from '@tethys/speicher';
 import SpeicherWorker from '@tethys/speicher/worker?worker';
@@ -10,9 +12,9 @@ import { Button } from '@tethys/ui-basis';
 import type { Speicher, Speicherfehler } from '@tethys/vertrag';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import { speicherAbmelden, speicherMelden } from '../fehler/notfall';
 import { EINZIGER_NUTZER, type Umgebung } from '../lv/befehlsweg';
 import { appIdQuelle, appUhr } from '../lv/ids';
-import { texte as lvTexte } from '../lv/texte';
 import { texte } from './texte';
 
 const Kontext = createContext<Umgebung | null>(null);
@@ -75,7 +77,10 @@ export function SpeicherAnbieter({
     let aktiv = true;
     let offen: Speicher | null = null;
     const freigeben = (): void => {
-      if (offen !== null) void offen.schliessen();
+      if (offen !== null) {
+        speicherAbmelden(offen);
+        void offen.schliessen();
+      }
       offen = null;
     };
     void oeffnen().then((r) => {
@@ -94,6 +99,7 @@ export function SpeicherAnbieter({
         uhr: appUhr,
         nutzer: EINZIGER_NUTZER,
       };
+      speicherMelden(r.speicher);
       onBereit?.(umgebung);
       setLage({ art: 'bereit', umgebung });
     });
@@ -128,10 +134,16 @@ export function SpeicherAnbieter({
   return (
     <div className="seite" role="alert">
       <h1>{gesperrt ? texte.gesperrtTitel : texte.fehlerTitel}</h1>
-      <p>{gesperrt ? texte.gesperrtText : lvTexte.speicherfehler[lage.fehler.code]}</p>
+      <p>{gesperrt ? texte.gesperrtText : texte.oeffnenFehler[lage.fehler.code]}</p>
       <Button variante="primaer" onClick={erneut}>
         {texte.erneut}
       </Button>
+      {gesperrt || lage.fehler.meldung === '' ? null : (
+        <details>
+          <summary>{texte.einzelheiten}</summary>
+          <pre>{lage.fehler.meldung}</pre>
+        </details>
+      )}
     </div>
   );
 }

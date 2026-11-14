@@ -5,7 +5,7 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
-import { projektAnlegen } from './hilfen';
+import { erwarteMeldung, projektAnlegen } from './hilfen';
 
 const grid = (page: Page) => page.getByRole('treegrid', { name: 'Positionen' });
 
@@ -84,7 +84,11 @@ test('Zeile öffnen (Punkt 2): Strg+Enter und Doppelklick auf OZ öffnen den Pos
   // Eine Gliederung hat keinen Positionsdialog: Hinweis statt Dialog.
   await zelle(page, 'Baustelleneinrichtung', 'kurztext').focus();
   await page.keyboard.press('Control+Enter');
+<<<<<<< HEAD
   await expect(page.getByText('Titel werden im Grid bearbeitet', { exact: true })).toBeVisible();
+=======
+  await erwarteMeldung(page, 'Merkmale gibt es nur an Positionen');
+>>>>>>> welle-7/132-fehlerfestigkeit
   await expect(dialog).toHaveCount(0);
 });
 

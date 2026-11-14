@@ -1754,6 +1754,13 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   RechnungFreigeben: true,
   RechnungsfreigabeAufheben: true,
   RechnungLoeschen: true,
+  // v1.7b (Ticket 128): mechanisch ergänzt; Speichern der neuen Felder folgt mit Ticket 139
+  VertragsstrafeSetzen: true,
+  SkontoSetzen: true,
+  BauabzugsteuerSetzen: true,
+  ZahlungErfassen: true,
+  ZahlungAendern: true,
+  ZahlungLoeschen: true,
   KostenermittlungAnlegen: true,
   KostenermittlungskopfSetzen: true,
   KostenermittlungseintragSetzen: true,

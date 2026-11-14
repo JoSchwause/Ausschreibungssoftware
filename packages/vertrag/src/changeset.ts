@@ -96,8 +96,8 @@ export type Befehlsfehlercode =
   | 'angebot-unbekannt'
   | 'befehl-nicht-zustaendig' // Befehl passt nicht zum übergebenen Zustand
   /**
-   * v1.4 (D-34, Q5): Der Befehl würde eine freigegebene Rechnung ändern; an ihr gilt nur `RechnungsfreigabeAufheben`.
-   * Der eingefrorene Zahlbetrag ändert sich nie still.
+   * v1.4 (D-34, Q5): Der Befehl würde eine freigegebene Rechnung ändern; an ihr gilt nur `RechnungsfreigabeAufheben` (v1.7b:
+   * und die Zahlungsbefehle). Der eingefrorene Zahlbetrag ändert sich nie still.
    */
   | 'rechnung-freigegeben'
   /**
@@ -111,7 +111,12 @@ export type Befehlsfehlercode =
    * verweisen (`BieterLoeschen`: Angebote; `ZuschlagZuruecknehmen`: Nachträge, Aufmaßblätter, Rechnungen, Mängel). Art und
    * Anzahl stehen in `Befehlsfehler.verweise`, damit die Oberfläche sagt, was zuerst zu entfernen ist (Q5).
    */
-  | 'verweise-vorhanden';
+  | 'verweise-vorhanden'
+  /**
+   * v1.7b (Ticket 128, D-72, Q5; Glossar „Zahlung“): `RechnungsfreigabeAufheben` an einer Rechnung mit Zahlungen. Erst die
+   * Zahlungen löschen; so bleibt stehen, auf welchen eingefrorenen Zahlbetrag gezahlt wurde.
+   */
+  | 'zahlungen-vorhanden';
 
 /**
  * Art eines Verweises, der ein Löschen sperrt (v1.7a, Ticket 127; Glossar „Verweissperre“). `nachtrag` zählt Nachtrags-LVs
@@ -141,8 +146,9 @@ export interface Befehlsfehler {
   readonly verweise?: readonly Verweisanzahl[];
   /**
    * v1.7a (Ticket 127, für Ticket 137 Punkt 6): alle betroffenen Knoten, wenn es mehrere sind, in Dokumentreihenfolge, etwa
-   * die Ordnungszahlen, die nicht zu einer neuen OZ-Maske passen (`OzMaskeSetzen`). `knotenId` ist dann der erste davon. Fehlt:
-   * höchstens ein Knoten (`knotenId`); nie leer.
+   * die Knoten, die nicht zu einer neuen OZ-Maske passen (`OzMaskeSetzen`, mit den Codes `maske-ungueltig`, `oz-ueberlauf` oder
+   * `knotenart-unzulaessig` des ersten Knotens; D-87). `knotenId` ist dann der erste davon. Fehlt: höchstens ein Knoten
+   * (`knotenId`); nie leer.
    */
   readonly knotenIds?: readonly KnotenId[];
 }
@@ -440,6 +446,10 @@ export interface AufmassChangeSet {
  * Auftrags-LV eine freigegebene Rechnung mit größerer Nummer hat (sonst würde eine gelöschte und neu angelegte Rechnung
  * zwischen eingefrorene Zahlbeträge geschoben und doppelt bezahlt). Dazu `konflikt` für eine Kennung in `aufmassIds`, zu
  * der es kein Blatt dieses Auftrags-LV gibt. Umsetzung Ticket 79, Befund der Prüfung Ticket 81.
+ *
+ * v1.7b (D-72, D-128.7): ebenso `konflikt` für ein ChangeSet, dessen `nachher` Zahlungen ohne Freigabe hätte (Invariante an
+ * `Rechnung`), auch ohne Ausführer (Undo von `RechnungFreigeben`, solange Zahlungen bestehen). Ein Zahlungsbefehl ändert nur
+ * `zahlungen`; `freigabe` ist vorher und nachher gleich.
  */
 export interface RechnungChangeSet {
   readonly art: 'rechnung';

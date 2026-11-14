@@ -180,7 +180,9 @@ gelten unverändert.
   `AngebotLoeschen`, `AngebotspositionSetzen` (auch zum Berichtigen auf „nicht angeboten“), `AngebotsNachlassSetzen`/
   `AngebotsNachlassEntfernen`, `OzMaskeSetzen` (der Kern liefert die umnummerierten Knoten): keine neuen Befehle. Für 137
   Punkt 6 (Fehler mit Liste der OZ, die nicht zur neuen Maske passen) gibt es additiv `Befehlsfehler.knotenIds` (alle
-  betroffenen Knoten in Dokumentreihenfolge, `knotenId` = der erste); der Code bleibt einer der vorhandenen (`oz-ungueltig`).
+  betroffenen Knoten in Dokumentreihenfolge, `knotenId` = der erste); der Code bleibt einer der vorhandenen (berichtigt nach
+  D-87: `maske-ungueltig`, `oz-ueberlauf` oder an der Los-Stufe `knotenart-unzulaessig`, wie der Kern sie seit jeher meldet;
+  nicht `oz-ungueltig`).
 - **D-127.15 Form der Lieferung.** Version im Kopf von `index.ts` vermerkt (keine Konstante). Typtests in einer eigenen Datei
   `vertrag-v17a.test.ts` (die alte hat 3.000 Zeilen); in `vertrag.test.ts` nur die zwei geschlossenen Listen
   (`AuftragsLvBefehl`, `Befehlsfehlercode`) ergänzt. Beispiele in `beispiele.ts`.
