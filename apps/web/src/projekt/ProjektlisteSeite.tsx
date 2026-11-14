@@ -3,13 +3,17 @@
 // und Speicher (A5); der Import ist der Weg der Projektdatei (`projektdateiImportieren`, G-56). Ticket 147: Ist die Liste
 // leer, begrüßt die Seite mit drei Wegen (Beispielprojekt, GAEB-Datei, leeres Projekt mit dem Formular dieser Seite); beim
 // ersten Projekt steht der Hinweis, wo die Daten liegen und wie man sichert.
+// Ticket 150: Das Einlesen übernimmt fehlende Einstellungen der Datei und nennt im Dialog, was übernommen und was belassen
+// wurde (D-73, D-84); ein schon vorhandenes Projekt lässt sich als Kopie einlesen (E8). „Büro (Absender)“ gilt für alle
+// Projekte und steht deshalb hier.
 
-import { Button, Eingabefeld, useToast } from '@tethys/ui-basis';
-import type { ProjektId, Projektuebersicht } from '@tethys/vertrag';
+import { Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
+import type { ProjektId, ProjektdateiEinleseergebnis, Projektuebersicht } from '@tethys/vertrag';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SyntheticEvent, ReactElement } from 'react';
 import { Datenhinweis } from '../hilfe/Datenhinweis'; // Ticket 147
 import { Willkommen } from '../hilfe/Willkommen'; // Ticket 147
+import { einstellungenFuer } from '../historie/einstellungen'; // Ticket 150
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
@@ -17,6 +21,8 @@ import { SicherungsBereich } from '../sicherung/SicherungsBereich'; // Ticket 62
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
 import { projektAnlegenBefehl } from './befehle';
+import { BueroDialog } from './BueroDialog'; // Ticket 150
+import { berichtZeilen, projektdateiEinlesen, projektnameDerDatei } from './einlesen'; // Ticket 150
 import { texte } from './texte';
 import './projekt.css';
 
@@ -36,6 +42,12 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
   const [bauherr, setBauherr] = useState('');
   const [nameFehlt, setNameFehlt] = useState(false);
   const datei = useRef<HTMLInputElement>(null);
+  // Ticket 150
+  const [buero, setBuero] = useState(false);
+  const [kopie, setKopie] = useState<{ inhalt: string; datei: string; name: string; vorschlag: string } | null>(
+    null,
+  );
+  const [bericht, setBericht] = useState<ProjektdateiEinleseergebnis['einstellungen']>(null);
 
   const laden = useCallback(async () => {
     const r = await u.speicher.projekte.auflisten();
@@ -64,15 +76,28 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
     if (pruefe(a) && a.zustand !== null) gehe(projektPfad(a.zustand.id));
   };
 
-  const importieren = async (f: File): Promise<void> => {
-    const r = await u.speicher.projektdateiImportieren(await f.text());
+  const einlesen = async (inhalt: string, dateiname: string, kopieName?: string): Promise<void> => {
+    const r = await projektdateiEinlesen(u, inhalt, kopieName);
     if (!r.ok) {
+      if (r.fehler.code === 'existiert-bereits' && kopieName === undefined) {
+        const name = projektnameDerDatei(inhalt) ?? dateiname;
+        setKopie({ inhalt, datei: dateiname, name, vorschlag: texte.importieren.kopieVorschlag(name) });
+        return;
+      }
       speicherfehler(r.fehler, texte.importieren.fehler);
       return;
     }
-    zeige({ titel: texte.importieren.erfolg, beschreibung: f.name, art: 'erfolg' });
+    setKopie(null);
+    // Der Speicher hat die Einstellungen ergänzt: die Sitzung liest sie neu.
+    if (r.wert.einstellungen !== null) await einstellungenFuer(u).laden();
+    zeige({ titel: texte.importieren.erfolg, beschreibung: dateiname, art: 'erfolg' });
+    setBericht(r.wert.einstellungen);
     await laden();
   };
+  const importieren = async (f: File): Promise<void> => {
+    await einlesen(await f.text(), f.name);
+  };
+  const zeilen = berichtZeilen(bericht);
 
   // Ticket 147: dasselbe Formular unter der Liste und, bei leerer Liste, als dritter Weg der Begrüßung (dort ohne Überschrift).
   const formular = (mitTitel: boolean): ReactElement => (
@@ -141,7 +166,99 @@ export function ProjektlisteSeite({ gehe }: { gehe: (pfad: string) => void }): R
           }}
         />
         <Button onClick={() => datei.current?.click()}>{texte.importieren.knopf}</Button>
+        <Button
+          onClick={() => {
+            setBuero(true);
+          }}
+        >
+          {texte.buero.knopf}
+        </Button>
       </div>
+      <BueroDialog
+        offen={buero}
+        onSchliessen={() => {
+          setBuero(false);
+        }}
+      />
+      <Dialog
+        offen={kopie !== null}
+        onOffenChange={(o) => {
+          if (!o) setKopie(null);
+        }}
+        titel={texte.importieren.vorhandenTitel}
+        beschreibung={kopie === null ? '' : texte.importieren.vorhanden(kopie.name)}
+        fuss={
+          <>
+            <Button
+              onClick={() => {
+                setKopie(null);
+              }}
+            >
+              {texte.importieren.abbrechen}
+            </Button>
+            <Button
+              variante="primaer"
+              disabled={kopie === null || kopie.vorschlag.trim() === ''}
+              onClick={() => {
+                if (kopie !== null) void einlesen(kopie.inhalt, kopie.datei, kopie.vorschlag.trim());
+              }}
+            >
+              {texte.importieren.alsKopie}
+            </Button>
+          </>
+        }
+      >
+        <Eingabefeld
+          label={texte.importieren.kopieName}
+          value={kopie?.vorschlag ?? ''}
+          onWertChange={(w) => {
+            setKopie((k) => (k === null ? k : { ...k, vorschlag: w }));
+          }}
+        />
+        <p className="projekt__leise">{texte.importieren.kopieHinweis}</p>
+      </Dialog>
+      <Dialog
+        offen={zeilen !== null}
+        onOffenChange={(o) => {
+          if (!o) setBericht(null);
+        }}
+        titel={texte.importieren.berichtTitel}
+        fuss={
+          <Button
+            onClick={() => {
+              setBericht(null);
+            }}
+          >
+            {texte.importieren.schliessen}
+          </Button>
+        }
+      >
+        {zeilen === null ? null : (
+          <section className="projekt__bericht" aria-label={texte.importieren.berichtEinstellungen}>
+            <h3>{texte.importieren.berichtEinstellungen}</h3>
+            {zeilen.uebernommen.length > 0 ? (
+              <>
+                <p>{texte.importieren.uebernommen}</p>
+                <ul aria-label={texte.importieren.uebernommen}>
+                  {zeilen.uebernommen.map((z) => (
+                    <li key={z}>{z}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {zeilen.belassen.length > 0 ? (
+              <>
+                <p>{texte.importieren.belassen}</p>
+                <ul aria-label={texte.importieren.belassen}>
+                  {zeilen.belassen.map((z) => (
+                    <li key={z}>{z}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </section>
+        )}
+      </Dialog>
     </div>
   );
 }

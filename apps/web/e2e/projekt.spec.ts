@@ -26,10 +26,10 @@ test('Projekte nach Name; Projekt und LV anlegen, umbenennen und öffnen', async
   const liste = page.getByRole('list', { name: 'Projekte' });
   await expect(liste.getByRole('link')).toHaveText(['Amtsgericht', 'Zeppelinhalle']);
 
-  // Stammdaten ändern (ProjektStammdatenSetzen).
+  // Projektangaben (ProjektangabenSetzen; Ticket 150).
   await liste.getByRole('link', { name: 'Zeppelinhalle' }).click();
-  await page.getByRole('button', { name: 'Stammdaten ändern' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Stammdaten ändern' });
+  await page.getByRole('button', { name: 'Projektangaben …' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Projektangaben' });
   await dialog.getByLabel('Projektname').fill('Bürgerhaus');
   await dialog.getByLabel('Projektname').press('Enter');
   await expect(dialog).toHaveCount(0);
