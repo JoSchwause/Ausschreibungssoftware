@@ -42,9 +42,13 @@ export const texte = {
       umbenannt: (n: string) => `Der Name war vergeben; das Profil heißt jetzt „${n}“.`,
       nichtLesbar: 'Die Datei konnte nicht gelesen werden.',
       befunde: 'Befunde beim Lesen des Profils',
+      loeschenTitel: 'Profil löschen?',
+      loeschenFrage: (n: string) =>
+        `Das Profil „${n}“ wird aus den Einstellungen entfernt. „Einstellung rückgängig“ holt es in dieser Sitzung zurück.`,
+      loeschenBestaetigen: 'Profil löschen',
       zurueckgehalten: 'Nicht verwendete gespeicherte Profile',
       zurueckHinweis:
-        'Diese gespeicherten Einträge erscheinen nicht in der Auswahl. Sie bleiben unverändert gespeichert; nichts wird verworfen.',
+        'Diese Einträge aus dem Browserspeicher einer früheren Fassung wurden nicht in die Einstellungen übernommen. Sie bleiben dort unverändert; nichts wird verworfen.',
       zurueckNichtLesbar: (n: number) =>
         n === 1
           ? '1 Eintrag konnte nicht gelesen werden.'
