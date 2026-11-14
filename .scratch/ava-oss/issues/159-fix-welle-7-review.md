@@ -1,6 +1,6 @@
 # 159: Behebung des Wellen-Reviews Welle 7
 
-Status: claimed (159a)
+Status: done-by-agent (159a); 159b offen
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: 159a: Pakete (`gaeb`, `ui-grid`, `bauzeit`, `ausgabe`, `abrechnung`-Paket, `vergabe`, `vertrag` nur Kommentare, `fixtures/`, `GLOSSARY.md`) und App-Ordner `gaeb/` für SB3; 159b: App-Ordner `kosten/`, `vergabe/`, `honorar/`, `bauzeit/`, `bauleitung/`, `nachtrag/`, `hilfe/`, `auftrag/`, `lv/` (nur Spec), `ui/`, `e2e/`, `e2e-basispfad/`, `README.md`. Gesperrt bis zu ihrem Merge: `apps/web/src/abrechnung/`, `rechnung/` (152), `kern`, `speicher`, `projekt/`, `historie/` (161), `apps/web/src/ausgabe/` (162)
 Blocked by: alle Merges außer 152, 161, 162
@@ -18,11 +18,11 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
 
 ## Acceptance criteria
 
-- [ ] Jeder Pflichtpunkt aus D-104 erledigt oder begründet
-- [ ] Volle Web-E2E einmal grün (Budget-Ausfälle unter Last werden gemeldet, nie gelockert)
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Jeder Pflichtpunkt aus D-104 erledigt oder begründet (159a; 159b offen)
+- [x] Volle Web-E2E einmal grün (Budget-Ausfälle unter Last werden gemeldet, nie gelockert) (159a)
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -91,3 +91,7 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
 - **D-159a.15 R6 (zweiter Durchgang).** Beim Löschen samt Inhalt dürfen hinter dem Protokoll des Bestands nur Einträge
   `Rueckgaengig` und `Wiederholen` stehen, sonst `konflikt` (der Bestand ist veraltet). Test in `projektbestand.test.ts`
   (gespeichert ist ein gewöhnlicher Befehl mehr). Folge in ADR 0009 ergänzt.
+- **D-159a.16 Prüfläufe (159a).** `pnpm lint` und `pnpm typecheck` grün; `pnpm test` 4805 grün, 3 rot nur Leistungsbudgets unter
+  Last (Last ~11 auf 4 Kernen): `speicher/aufmass-leistung` (AufmasspositionSetzen/Undo/Redo, Median 87–129 ms gegen 100 ms),
+  `speicher/v16-leistung`, `apps/web/abrechnung/leistung`; die beiden letzten allein grün; Code dieser Wege unverändert, nichts
+  gelockert. Volle Web-E2E 125/125 grün, ui-grid-E2E 109/109 grün.
