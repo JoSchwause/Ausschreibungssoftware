@@ -621,9 +621,13 @@ async function torweg(page: Page): Promise<void> {
     .check();
   await endgueltig.click();
   await expect(page.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT })).toHaveCount(
-    0,
-  );
+  const projektVerweis = page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT });
+  await expect(projektVerweis).toHaveCount(0);
+  // Rückgängig holt das Projekt in der Sitzung zurück, Wiederholen löscht es wieder (D-96, Q5).
+  await page.keyboard.press('Control+z');
+  await expect(projektVerweis).toBeVisible();
+  await page.keyboard.press('Control+y');
+  await expect(projektVerweis).toHaveCount(0);
 
   // ── Sicherung einlesen → dieselben Werte ──────────────────────────────────────────────────────────────────────────
   await dateiWaehlen(page, () => sichtbarerKnopf(page, 'Projektdatei einlesen').click(), sicherungsDatei);
