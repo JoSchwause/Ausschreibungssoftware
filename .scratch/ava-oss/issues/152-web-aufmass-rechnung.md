@@ -1,6 +1,6 @@
 # 152: App: Aufmaß- und Rechnungsausgaben, Skonto, Zahlungen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: A2, A3, A5, E11 · Paket/Ordner: `apps/web/src/abrechnung/`, `rechnung/`
 Blocked by: 141, 143, 153
