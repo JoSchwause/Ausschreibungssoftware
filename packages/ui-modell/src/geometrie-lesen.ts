@@ -2,6 +2,7 @@
 // Kern des Geometrie-Workers: liest eine IFC-Datei mit web-ifc und liefert die Geometrie je Bauteil (D-50). Läuft im
 // Browser im Worker (`geometrie-worker.ts`) und in den Tests unter Node mit derselben web-ifc-Version.
 
+import type { IfcGlobalId } from '@tethys/vertrag';
 import { IFCELEMENT } from 'web-ifc';
 import type { IfcAPI } from 'web-ifc';
 import { Geometriesammler } from './geometrie';
@@ -13,9 +14,9 @@ import type { IfcElementEintrag } from './zuordnung';
 export interface Modellgeometrie {
   readonly gruppen: readonly Geometriegruppe[];
   /** GlobalId je Bauteilindex (`Geometriegruppe.teile` nennt den Index) */
-  readonly globalIdJeIndex: readonly string[];
-  readonly mitGeometrie: readonly string[];
-  readonly ohneGeometrie: readonly string[];
+  readonly globalIdJeIndex: readonly IfcGlobalId[];
+  readonly mitGeometrie: readonly IfcGlobalId[];
+  readonly ohneGeometrie: readonly IfcGlobalId[];
   /** Grenzen aller gezeichneten Teile, `null` ohne Geometrie */
   readonly grenzen: Grenzen | null;
 }
@@ -47,7 +48,9 @@ function elementeLesen(api: IfcAPI, modell: number): IfcElementEintrag[] {
     const klasse = api.GetNameFromTypeCode(api.GetLineType(modell, expressId) as number);
     const zeile = api.GetLine(modell, expressId) as { GlobalId?: { value?: unknown } } | undefined;
     const globalId = zeile?.GlobalId?.value;
-    if (typeof globalId === 'string') elemente.push({ expressId, globalId, klasse });
+    // Quelle der Marke (Ticket 155, D-140.7): die GlobalId, wie sie in der Datei steht; der Abgleich mit dem Leser der App
+    // läuft über Gleichheit, eine nicht wohlgeformte meldet der Leser als Befund.
+    if (typeof globalId === 'string') elemente.push({ expressId, globalId: globalId as IfcGlobalId, klasse });
   }
   return elemente;
 }

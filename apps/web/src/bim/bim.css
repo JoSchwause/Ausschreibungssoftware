@@ -133,3 +133,10 @@
 .bim__groesse {
   display: contents;
 }
+
+/* Ticket 155: Positionen, die schon auf einem anderen Aufmaßblatt stehen */
+.bim__schon {
+  margin: var(--tx-space-3) 0 0;
+  padding-left: var(--tx-space-5);
+  color: var(--tx-color-warning);
+}

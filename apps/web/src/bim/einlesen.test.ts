@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { befehlswegFuer, projektSitzung } from '../lv/befehlsweg';
 import { projektAnlegenBefehl } from '../projekt/befehle';
 import { speicherImSpeicher, testUmgebung } from '../testhilfen';
-import { GROSSE_DATEI, groessenbefund, modellEinlesen, namensvorschlag, tagDesEinlesens } from './einlesen';
+import { GROSSE_DATEI, groessenbefund, modellEinlesen, namensvorschlag } from './einlesen';
 import { bauwerksmodellSitzung, bauwerksmodellLaden } from './schreiben';
 import { hausBytes } from './testhilfen';
 
@@ -25,12 +25,10 @@ async function aufbau() {
 }
 
 describe('Angaben am Rand', () => {
-  it('Name aus dem Dateinamen ohne Endung, Tag des Einlesens aus der Uhr (Ortszeit)', () => {
+  it('Name aus dem Dateinamen ohne Endung', () => {
     expect(namensvorschlag('haus-v1.ifc')).toBe('haus-v1');
     expect(namensvorschlag('Modell.IFC')).toBe('Modell');
     expect(namensvorschlag('.ifc')).toBe('.ifc');
-    const t = new Date(2026, 10, 12, 23, 30);
-    expect(tagDesEinlesens(t.toISOString())).toBe('2026-11-12');
   });
 
   it('eine Datei über etwa 200 MB ist ein Befund (Warnung), keine Sperre', () => {

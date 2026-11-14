@@ -4,6 +4,7 @@
 // von `ui-modell` und die Auswahl der App. Tests prüfen so Zustand statt Pixel.
 
 import type { Bildschirmpunkt, Darstellungsstand, ModellansichtRef } from '@tethys/ui-modell';
+import type { IfcGlobalId } from '@tethys/vertrag';
 import type { RefObject } from 'react';
 
 export interface ModellTesthaken {
@@ -36,7 +37,8 @@ export function modellTesthaken(
   if (!AKTIV) return () => undefined;
   const haken: ModellTesthaken = {
     darstellung: () => ansicht.current?.darstellung() ?? null,
-    punkt: (g) => ansicht.current?.bildschirmpunkt(g) ?? null,
+    // Der Test reicht die GlobalId als Text (Ticket 155: die Leinwand nimmt `IfcGlobalId`).
+    punkt: (g) => ansicht.current?.bildschirmpunkt(g as IfcGlobalId) ?? null,
     gezeichnet: () => ansicht.current?.gezeichnet() ?? Promise.resolve(),
     auswahl,
     faerbung: () => Object.fromEntries(faerbung()),

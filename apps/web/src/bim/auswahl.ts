@@ -7,11 +7,12 @@
 // aktive Zeile (wie ein Klick), Strg+Leertaste nimmt sie in die Auswahl auf oder heraus (wie Strg+Klick).
 
 import type { VergleichsSprungziel } from '@tethys/ui-grid';
+import type { IfcGlobalId } from '@tethys/vertrag';
 import { vorfahren, type Modellbaum } from './baum';
 
 export interface Auswahlstand {
   /** GlobalIds der ausgewählten Bauteile, jede einmal. */
-  readonly auswahl: readonly string[];
+  readonly auswahl: readonly IfcGlobalId[];
   /** Die aktive Zeile des Grids; `undefined`, solange das Grid noch keine gemeldet hat. */
   readonly aktiveZeile: string | null | undefined;
   readonly sprungziel: VergleichsSprungziel | null;
@@ -29,8 +30,8 @@ export const AUSWAHL_START: Auswahlstand = {
 };
 
 /** Die Bauteile einer Zeile und aller Zeilen darunter (Teile unter ihrem Ganzen), in Baumreihenfolge, jede GlobalId einmal. */
-export function auswahlDerZeile(baum: Modellbaum, zeilenId: string): string[] {
-  const aus = new Set<string>();
+export function auswahlDerZeile(baum: Modellbaum, zeilenId: string): IfcGlobalId[] {
+  const aus = new Set<IfcGlobalId>();
   const stapel = [zeilenId];
   for (let id = stapel.pop(); id !== undefined; id = stapel.pop()) {
     const k = baum.knoten.get(id);
@@ -62,7 +63,7 @@ export function beiZeileAktiv(
 export function beiKlick3d(
   stand: Auswahlstand,
   baum: Modellbaum,
-  globalIds: readonly string[],
+  globalIds: readonly IfcGlobalId[],
   hinzufuegen: boolean,
 ): Auswahlstand {
   const auswahl = hinzufuegen ? [...new Set([...stand.auswahl, ...globalIds])] : [...new Set(globalIds)];

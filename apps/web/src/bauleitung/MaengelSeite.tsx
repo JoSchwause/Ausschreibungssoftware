@@ -48,12 +48,12 @@ import {
   mangelAnlegenBefehl,
   mangelAngabenBefehl,
   namenJeAuftrag,
-  ozVonPosition,
-  positionenNachOz,
+  positionswahl,
   statusBefehle,
   fristbefundText,
   ueberfaelligeIds,
   verlaufZeilen,
+  type Auswahlwert,
   type Feldfehler,
   type MangelEntwurf,
   type MangelFilter,
@@ -101,7 +101,7 @@ const FELD_VON_BEFEHL: Readonly<Record<string, keyof MangelEntwurf>> = {
   festgestellt: 'festgestellt',
   frist: 'frist',
   bauteil: 'globalId',
-  positionId: 'position',
+  positionId: 'positionId',
 };
 
 export function MaengelSeite({
@@ -172,9 +172,22 @@ function Maengel({
   const gewaehlt = maengel.find((m) => m.id === aktivId) ?? null;
   const t = texte.maengel;
 
-  const positionenFuer = (auftragsLvId: string) => {
-    const z = auftraege.find((a) => a.auftragsLeistungsverzeichnis.id === auftragsLvId);
-    return z === undefined ? null : positionenNachOz(z.auftragsLeistungsverzeichnis.knoten);
+  // Ticket 155: Positionen werden aus dem Auftrags-LV gewählt; je Auftrags-LV einmal gebaut.
+  const positionswahlen = useMemo(
+    () =>
+      new Map(
+        auftraege.map((z) => [
+          z.auftragsLeistungsverzeichnis.id as string,
+          positionswahl(z.auftragsLeistungsverzeichnis.knoten),
+        ]),
+      ),
+    [auftraege],
+  );
+  const positionenVon = (auftragsLvId: string): readonly Auswahlwert[] =>
+    positionswahlen.get(auftragsLvId) ?? [];
+  const positionenFuer = (auftragsLvId: string): ReadonlySet<string> | null => {
+    const w = positionswahlen.get(auftragsLvId);
+    return w === undefined ? null : new Set(w.map((o) => o.wert));
   };
 
   /** Schreibt die Befehle als einen Undo-Schritt; `true`, wenn alle angenommen wurden. Meldet jede Abweisung. */
@@ -256,7 +269,6 @@ function Maengel({
     wert: z.auftragsLeistungsverzeichnis.id,
     label: `${z.auftragsLeistungsverzeichnis.name} (${namen[z.auftragsLeistungsverzeichnis.id] ?? ''})`,
   }));
-  const modellOptionen = modelle.map((m) => ({ wert: m.id, label: m.name }));
   const projektName = dateinameSauber(projekt.name, ERSATZ_PROJEKT);
 
   return (
@@ -440,7 +452,8 @@ function Maengel({
           titel={texte.formular.titelNeu}
           start={neuerEntwurf()}
           auftraege={auftragsOptionen}
-          modelle={modellOptionen}
+          positionenVon={positionenVon}
+          modelle={modelle}
           nummerFest={false}
           onSenden={async (e) => {
             const f = await speichereNeu(e);
@@ -455,18 +468,10 @@ function Maengel({
       {dialog?.art === 'bearbeiten' && gewaehlt !== null ? (
         <MangelFormular
           titel={texte.formular.titelBearbeiten(gewaehlt.nummer)}
-          start={entwurfAusMangel(
-            gewaehlt,
-            gewaehlt.auftragsLvId === null || gewaehlt.positionId === null
-              ? ''
-              : ozVonPosition(
-                  auftraege.find((a) => a.auftragsLeistungsverzeichnis.id === gewaehlt.auftragsLvId)
-                    ?.auftragsLeistungsverzeichnis.knoten ?? [],
-                  gewaehlt.positionId,
-                ),
-          )}
+          start={entwurfAusMangel(gewaehlt)}
           auftraege={auftragsOptionen}
-          modelle={modellOptionen}
+          positionenVon={positionenVon}
+          modelle={modelle}
           nummerFest
           onSenden={async (e) => {
             const f = await speichereAenderung(e);

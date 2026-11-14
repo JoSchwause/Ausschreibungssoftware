@@ -4,15 +4,23 @@
 // entfernen, Befunde der Zuordnung mit Sprung in den Baum (U5). Dazu „Aufmaßblatt aus Auswahl …“ bei einem Auftrags-LV.
 
 import { Auswahl, Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
-import type { Bauwerksmodell, KnotenId, Position, PositionId, ProjektId } from '@tethys/vertrag';
-import { MENGENART_STUECK, zuordnungenPruefen } from '@tethys/bim';
+import {
+  MENGENART_STUECK,
+  type Bauwerksmodell,
+  type IfcGlobalId,
+  type KnotenId,
+  type Position,
+  type PositionId,
+  type ProjektId,
+} from '@tethys/vertrag';
+import { zuordnungenPruefen } from '@tethys/bim';
 import { useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { AufmassAusAuswahlDialog } from './AufmassAusAuswahlDialog';
 import { BefundListe } from './BefundListe';
 import { texte } from './texte';
 import { uebernahmeVorschau } from './uebernahme';
-import type { Bezugsstand } from './useBezug';
+import type { ZuordnungsLvStand } from './zuordnungsLv';
 import {
   bauteileInModellreihenfolge,
   mengenartenDerAuswahl,
@@ -29,15 +37,15 @@ export function ZuordnungBereich({
   projektId,
   modell,
   auswahl,
-  bezug,
+  zuordnungsLv,
   zurZeile,
   gehe,
 }: {
   projektId: ProjektId;
   modell: Bauwerksmodell;
   auswahl: readonly string[];
-  bezug: Bezugsstand;
-  zurZeile: (globalId: string) => void;
+  zuordnungsLv: ZuordnungsLvStand;
+  zurZeile: (globalId: IfcGlobalId) => void;
   gehe: (pfad: string) => void;
 }): ReactElement {
   const [dialog, setDialog] = useState<'zuordnen' | 'aufmass' | null>(null);
@@ -47,10 +55,10 @@ export function ZuordnungBereich({
     return m;
   }, [modell]);
   const pruefung = useMemo(
-    () => (bezug.bezug === null ? null : zuordnungenPruefen(bezug.knoten, modell)),
-    [bezug.bezug, bezug.knoten, modell],
+    () => (zuordnungsLv.lv === null ? null : zuordnungenPruefen(zuordnungsLv.knoten, modell)),
+    [zuordnungsLv.lv, zuordnungsLv.knoten, modell],
   );
-  const mitZuordnung = useMemo(() => zuordnungenDerPositionen(bezug.knoten), [bezug.knoten]);
+  const mitZuordnung = useMemo(() => zuordnungenDerPositionen(zuordnungsLv.knoten), [zuordnungsLv.knoten]);
   const anzahlBauteile = namen.size;
   // Ein Sprung nur zu Objekten im Baum; eine hängende Zuordnung (Bauteil fehlt im Modell) hat keine Zeile.
   const imModell = useMemo(() => {
@@ -69,21 +77,21 @@ export function ZuordnungBereich({
   return (
     <section ref={bereich} className="bim__leiste bim__zuordnung" aria-label={t.region}>
       <h2>{t.region}</h2>
-      {bezug.wahlen === null ? (
+      {zuordnungsLv.wahlen === null ? (
         <p aria-busy="true">{t.laedt}</p>
-      ) : bezug.wahlen.length === 0 ? (
+      ) : zuordnungsLv.wahlen.length === 0 ? (
         <p>{t.keinLv}</p>
       ) : (
         <div className="bim__aktionen">
           <Auswahl
             kompakt
-            label={t.bezug}
-            wert={bezug.schluessel}
-            optionen={bezug.wahlen.map((w) => ({ wert: w.schluessel, label: w.label }))}
-            onWertChange={bezug.waehlen}
+            label={t.zuordnungsLv}
+            wert={zuordnungsLv.schluessel}
+            optionen={zuordnungsLv.wahlen.map((w) => ({ wert: w.schluessel, label: w.label }))}
+            onWertChange={zuordnungsLv.waehlen}
           />
           <Button
-            disabled={auswahl.length === 0 || bezug.bezug === null}
+            disabled={auswahl.length === 0 || zuordnungsLv.lv === null}
             onClick={() => {
               setDialog('zuordnen');
             }}
@@ -91,7 +99,7 @@ export function ZuordnungBereich({
             {t.zuordnen}
           </Button>
           <Button
-            disabled={auswahl.length === 0 || bezug.bezug?.art !== 'auftrag'}
+            disabled={auswahl.length === 0 || zuordnungsLv.lv?.art !== 'auftrag'}
             title={texte.aufmass.nurAuftrag}
             onClick={() => {
               setDialog('aufmass');
@@ -105,7 +113,7 @@ export function ZuordnungBereich({
         <p>{t.zaehlung(anzahlBauteile - pruefung.ohneZuordnung.length, pruefung.ohneZuordnung.length)}</p>
       )}
       <h3>{t.liste}</h3>
-      {bezug.bezug === null ? null : mitZuordnung.length === 0 ? (
+      {zuordnungsLv.lv === null ? null : mitZuordnung.length === 0 ? (
         <p>{t.leer}</p>
       ) : (
         <ul className="bim__zuordnungen" aria-label={t.liste}>
@@ -124,7 +132,7 @@ export function ZuordnungBereich({
                         aria-label={t.entfernenVon(name, p.ordnungszahl ?? p.kurztext)}
                         onClick={() => {
                           const b = zuordnungEntfernenBefehl(p, z);
-                          if (b !== null) void bezug.senden([b]);
+                          if (b !== null) void zuordnungsLv.senden([b]);
                         }}
                       >
                         {t.entfernen}
@@ -150,7 +158,7 @@ export function ZuordnungBereich({
         <ZuordnenDialog
           modell={modell}
           auswahl={auswahl}
-          bezug={bezug}
+          zuordnungsLv={zuordnungsLv}
           onSchliessen={() => {
             setDialog(null);
           }}
@@ -159,12 +167,12 @@ export function ZuordnungBereich({
           imModell={imModell}
         />
       ) : null}
-      {dialog === 'aufmass' && bezug.bezug?.art === 'auftrag' ? (
+      {dialog === 'aufmass' && zuordnungsLv.lv?.art === 'auftrag' ? (
         <AufmassAusAuswahlDialog
           projektId={projektId}
           modell={modell}
           auswahl={auswahl}
-          auftrag={bezug.bezug.zustand}
+          auftrag={zuordnungsLv.lv.zustand}
           onSchliessen={() => {
             setDialog(null);
           }}
@@ -178,7 +186,7 @@ export function ZuordnungBereich({
 function ZuordnenDialog({
   modell,
   auswahl,
-  bezug,
+  zuordnungsLv,
   onSchliessen,
   zurZeile,
   zurPosition,
@@ -186,9 +194,9 @@ function ZuordnenDialog({
 }: {
   modell: Bauwerksmodell;
   auswahl: readonly string[];
-  bezug: Bezugsstand;
+  zuordnungsLv: ZuordnungsLvStand;
   onSchliessen: () => void;
-  zurZeile: (globalId: string) => void;
+  zurZeile: (globalId: IfcGlobalId) => void;
   zurPosition: (knotenId: KnotenId) => void;
   imModell: (globalId: string) => boolean;
 }): ReactElement {
@@ -199,8 +207,8 @@ function ZuordnenDialog({
   const arten = useMemo(() => mengenartenDerAuswahl(modell, auswahl), [modell, auswahl]);
   // Die Zahl der gewählten Bauteile trägt die Mengenart „Stück“ (jedes Bauteil zählt 1), ausdrücklich gesucht (Ticket 122).
   const anzahl = arten.find((a) => a.name === MENGENART_STUECK)?.anzahl ?? 0;
-  const treffer = useMemo(() => positionenSuchen(bezug.knoten, suche), [bezug.knoten, suche]);
-  const position: Position | undefined = bezug.knoten.find(
+  const treffer = useMemo(() => positionenSuchen(zuordnungsLv.knoten, suche), [zuordnungsLv.knoten, suche]);
+  const position: Position | undefined = zuordnungsLv.knoten.find(
     (k): k is Position => k.art === 'position' && k.id === positionId,
   );
   const bauteile = useMemo(() => bauteileInModellreihenfolge(modell, auswahl), [modell, auswahl]);
@@ -228,7 +236,7 @@ function ZuordnenDialog({
             disabled={befehl === null}
             onClick={() => {
               if (befehl === null) return;
-              void bezug.senden([befehl]).then((ok) => {
+              void zuordnungsLv.senden([befehl]).then((ok) => {
                 if (ok) {
                   zeige({ titel: t.zugeordnet(anzahl), art: 'erfolg' });
                   onSchliessen();

@@ -5,7 +5,16 @@
 import { readFileSync } from 'node:fs';
 import { aufmassBefehlAusfuehren } from '@tethys/abrechnung';
 import { bauteileImStrukturknoten } from '@tethys/bim';
-import type { AuftragsLeistungsverzeichnisId, IfcGlobalId, Knoten, ProjektId } from '@tethys/vertrag';
+import type {
+  Aufmass,
+  AufmassId,
+  AuftragsLeistungsverzeichnisId,
+  IfcGlobalId,
+  Knoten,
+  Menge,
+  PositionId,
+  ProjektId,
+} from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
 import { fixtureInhalt } from '../../e2e/fixture-inhalt';
 import { aufmassBlattBefehl, aufmassVorschau } from './aufmassblatt';
@@ -68,6 +77,29 @@ describe('Aufmaßblatt aus Auswahl „Geschoss EG“', () => {
       A.positionen[1]?.mengenansatz.map((z) => ({ ...z, zeile: Number(z.zeile), formel: Number(z.formel) })),
     );
     expect(aufmassBefehlAusfuehren(null, befehl).ok).toBe(true);
+  });
+
+  it('Ticket 155: nennt je Position die Blätter, auf denen sie schon steht', () => {
+    const erste = A.positionen[0];
+    if (erste === undefined) throw new Error('Fixture');
+    const blatt: Aufmass = {
+      id: 'b1' as AufmassId,
+      projektId: 'p1' as ProjektId,
+      auftragsLvId: 'auf1' as AuftragsLeistungsverzeichnisId,
+      nummer: 1,
+      bezeichnung: '',
+      datum: null,
+      positionen: [
+        { positionId: erste.positionId as PositionId, mengenansatz: null, menge: '2.500' as Menge },
+      ],
+    };
+    const v = aufmassVorschau(knotenMitZuordnungen(), hausModell(), auswahl, [blatt]);
+    expect(v.zeilen.map((z) => z.schonAufgemessen)).toEqual(
+      A.positionen.map((p, i) => (i === 0 ? [{ nummer: 1, menge: '2.500' }] : [])),
+    );
+    expect(
+      aufmassVorschau(knotenMitZuordnungen(), hausModell(), auswahl).zeilen[0]?.schonAufgemessen,
+    ).toEqual([]);
   });
 
   it('ohne zugeordnetes Bauteil in der Auswahl: leere Vorschau', () => {
