@@ -13,7 +13,7 @@
 // nach dem Einlesen.
 
 import { readFileSync } from 'node:fs';
-import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { Einheitspreis, LvZustand, Projektdatei } from '@tethys/vertrag';
 import { lvAlsExcel } from '../../../packages/ausgabe/src/index';
 import { betragDe, eingabeDe, neueZeile, summen, tippe, zeilen } from './hilfen';
@@ -239,11 +239,8 @@ async function werteLesen(page: Page): Promise<Record<string, unknown>> {
   return w;
 }
 
-/**
- * Der Torweg. `ausstehend`: auch der Schritt, dessen Bedienung noch gebaut wird („Projekt samt Inhalt löschen“: 161,
- * D-96). Ist er gemergt, entfällt der Schalter und der Weg läuft ganz.
- */
-async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promise<void> {
+/** Der Torweg, Schritt für Schritt wie im Kopf dieser Datei. */
+async function torweg(page: Page): Promise<void> {
   expect(verdoppelnNichtExakt()).toEqual([]);
 
   // ── Erster Start: Begrüßung, Beispielprojekt laden und ansehen ──────────────────────────────────────────────────────
@@ -605,52 +602,37 @@ async function torweg(page: Page, browser: Browser, ausstehend: boolean): Promis
   };
   await expect(page.getByRole('contentinfo', { name: 'Statuszeile' })).toContainText('Letzte Sicherung');
 
-  if (ausstehend) {
-    // ── Projekt löschen (D-96: „Projekt samt Inhalt löschen“, 160/161) ─────────────────────────────────────────────
-    await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
-    await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
-    const loeschen = page.getByRole('dialog', { name: /^Projekt (samt Inhalt )?löschen/ });
-    // Der Dialog nennt die Anzahl je Art und verweist auf „Projektdatei sichern“.
-    await expect(loeschen).toContainText('Projektdatei sichern');
-    await expect(loeschen).toContainText(/2 Angebote/);
-    await loeschen.getByRole('button', { name: /^Projekt samt Inhalt löschen/ }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
-    await expect(
-      page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT }),
-    ).toHaveCount(0);
+  // ── Projekt löschen: „Projekt samt Inhalt löschen“ (D-96) ───────────────────────────────────────────────────────
+  await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
+  await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
+  const frage = page.getByRole('dialog', { name: 'Projekt löschen' });
+  const inhalt = frage.getByRole('list', { name: 'Inhalt des Projekts' });
+  // Je Art die Anzahl: LV und Nachtrags-LV, zwei Angebote und das des Auftragnehmers zum Nachtrag, …
+  for (const art of ['2 LVs', '3 Angebote', '1 Auftrags-LV', '1 Aufmaßblatt', '1 Rechnung'])
+    await expect(inhalt.getByRole('listitem').filter({ hasText: new RegExp(`^${art}$`) })).toHaveCount(1);
+  await frage.getByRole('button', { name: 'Projekt samt Inhalt löschen …' }).click();
+  const loeschen = page.getByRole('dialog', { name: 'Projekt samt Inhalt löschen' });
+  // Zuerst die Sicherung (sie hat den Fokus); gesichert ist schon, gelöscht wird erst nach der Bestätigung.
+  await expect(loeschen.getByRole('button', { name: 'Projektdatei sichern' })).toBeFocused();
+  const endgueltig = loeschen.getByRole('button', { name: 'Projekt samt Inhalt löschen', exact: true });
+  await expect(endgueltig).toBeDisabled();
+  await loeschen
+    .getByRole('checkbox', { name: `Ja, das Projekt „${PROJEKT}“ mit allem Inhalt löschen` })
+    .check();
+  await endgueltig.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT })).toHaveCount(
+    0,
+  );
 
-    // ── Sicherung einlesen → dieselben Werte ────────────────────────────────────────────────────────────────────────
-    await dateiWaehlen(page, () => sichtbarerKnopf(page, 'Projektdatei einlesen').click(), sicherungsDatei);
-    await projektdateiEingelesenSchliessen(page);
-    await page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT }).click();
-    expect(await werteLesen(page)).toEqual(vorher);
-    return;
-  }
-
-  // Bis „Projekt samt Inhalt löschen“ (D-96) gemergt ist: Ein frisches Gerät (leerer Speicher) liest die Sicherung ein und
-  // muss dieselben Werte zeigen.
-  const kontext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  const neu = await kontext.newPage();
-  await neu.goto('/');
-  await expect(neu.getByRole('region', { name: 'Willkommen bei Tethys AVA' })).toBeVisible();
-  await dateiWaehlen(neu, () => sichtbarerKnopf(neu, 'Projektdatei einlesen').click(), sicherungsDatei);
-  await projektdateiEingelesenSchliessen(neu);
-  await neu.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT }).click();
-  expect(await werteLesen(neu)).toEqual(vorher);
-  await kontext.close();
+  // ── Sicherung einlesen → dieselben Werte ──────────────────────────────────────────────────────────────────────────
+  await dateiWaehlen(page, () => sichtbarerKnopf(page, 'Projektdatei einlesen').click(), sicherungsDatei);
+  await projektdateiEingelesenSchliessen(page);
+  await page.getByRole('list', { name: 'Projekte' }).getByRole('link', { name: PROJEKT }).click();
+  expect(await werteLesen(page)).toEqual(vorher);
 }
 
-test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280 × 800', async ({
-  page,
-  browser,
-}) => {
+test('Tor E: Umsteiger vom ersten Start bis zur eingelesenen Sicherung, bei 1280 × 800', async ({ page }) => {
   test.setTimeout(300_000);
-  await torweg(page, browser, false);
-});
-
-// Der ganze Weg mit „Projekt samt Inhalt löschen“ (161, D-96) statt des frischen Geräts. Sobald 161 gemergt ist, ersetzt
-// dieser Weg den oberen.
-test.fixme('Tor E: der ganze Weg samt den ausstehenden Schritten', async ({ page, browser }) => {
-  test.setTimeout(300_000);
-  await torweg(page, browser, true);
+  await torweg(page);
 });
