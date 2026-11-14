@@ -9,7 +9,7 @@ test('Der Build mit Basis-Pfad lädt unter dem Pfad, ohne fehlende Dateien', asy
     if (r.status() >= 400) fehlend.push(`${String(r.status())} ${r.url()}`);
   });
   page.on('console', (m) => {
-    // Ohne Ausnahme (D-104): Seit dem Speicher-Pool wartet die App beim Neuladen still auf die OPFS-Datei.
+    // Ohne Ausnahme (D-104): Seit Ticket 139 prüft der Speicher-Worker die OPFS-Dateien beim Neuladen still vorher.
     if (m.type() === 'error') konsole.push(m.text());
   });
   page.on('pageerror', (e) => konsole.push(e.message));
