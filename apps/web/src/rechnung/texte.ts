@@ -132,6 +132,9 @@ export const texte = {
     'ohne-zuschlagssatz': (oz: string) => `${oz}: Zuschlagsposition ohne Satz; sie zählt 0,00.`,
     'nachlass-ohne-basis': 'Der absolute Nachlass hat keine Basis (Auftrags-LV netto 0,00); er zählt 0,00.',
     'netto-nach-nachlass-negativ': 'Das Netto nach Nachlass ist negativ.',
+    'skonto-ohne-eingang': 'Skonto vereinbart, aber kein Eingangsdatum: ohne Fristende gibt es keinen Skonto.',
+    'zahlungen-ueber-auszahlung': (offen: string) =>
+      `Gezahlt wurde mehr als die Auszahlung (offen ${offen} €).`,
   },
   freigabe: {
     knopf: 'Freigeben',
