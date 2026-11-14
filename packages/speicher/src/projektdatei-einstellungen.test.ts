@@ -15,6 +15,7 @@ import {
   type ProtokollId,
   type Speicher,
 } from '@tethys/vertrag';
+import { einstellungenBefehlAusfuehren } from '@tethys/kern';
 import { describe, expect, it } from 'vitest';
 import { direktTransport, speicherUeberTransport } from './client';
 import type { SpeicherKern } from './kern';
@@ -76,6 +77,22 @@ async function dateiMit(e: Einstellungen): Promise<string> {
 }
 
 describe('Projektdatei Schema 7: der Block der Einstellungen', () => {
+  it('die Übernahme rechnet der Ausführer des Kerns (`EinstellungenUebernehmen`, D-87 (3))', async () => {
+    const text = await dateiMit(EINSTELLUNGEN);
+    const lokal: Einstellungen = {
+      ...LEERE_EINSTELLUNGEN,
+      druckprofile: [{ ...DRUCKPROFIL, mitPreisen: true }],
+    };
+    const { s } = await speicherMit(lokal);
+    wert(await einlesen(s, text, MIT_UEBERNAHME));
+    const erwartet = einstellungenBefehlAusfuehren(lokal, {
+      art: 'EinstellungenUebernehmen',
+      einstellungen: EINSTELLUNGEN,
+    });
+    if (!erwartet.ok) throw new Error(erwartet.fehler.meldung);
+    expect(wert(await einstellungenVon(s).laden())).toEqual(erwartet.wert.einstellungen.nachher);
+  });
+
   it('der Export trägt die Einstellungen; sind sie leer, fehlt der Block; das Einstellungsprotokoll steht nicht darin', async () => {
     const ohne = JSON.parse(await dateiMit(LEERE_EINSTELLUNGEN)) as Projektdatei;
     expect(ohne.schemaVersion).toBe(7);

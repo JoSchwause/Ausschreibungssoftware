@@ -11,13 +11,21 @@ import type {
   Projektangaben,
   ProjektBefehl,
   ProjektId,
+  Projektbestand,
 } from '@tethys/vertrag';
+import {
+  beispielChangeSetProjektSamtInhaltLoeschen,
+  beispielChangeSetProjektSamtInhaltLoeschenUmgekehrt,
+  beispielProjektbestand,
+} from '../../vertrag/src/beispiele';
 import {
   bieterangabenFehler,
   bieterangabenNormalisieren,
   projektBefehlAusfuehren,
   projektChangeSetAnwenden,
   projektChangeSetUmkehren,
+  projektbestandChangeSetUmkehren,
+  projektSamtInhaltLoeschenAusfuehren,
 } from './index';
 import { erwarteOk } from './testhilfen';
 
@@ -135,10 +143,70 @@ describe('ProjektLoeschen', () => {
   });
 });
 
-// Vertrag v1.7c (Ticket 160, D-96): mechanische Folgezeile; den Ausführer mit Bestand liefert Ticket 161.
-describe('ProjektSamtInhaltLoeschen bis Ticket 161', () => {
-  it('befehl-nicht-zustaendig', () => {
-    expect(fehlercode(projekt(), { art: 'ProjektSamtInhaltLoeschen' })).toBe('befehl-nicht-zustaendig');
+// --- Vertrag v1.7c (Ticket 161; E8, D-96, D-160.4): Projekt samt Inhalt löschen ---------------------------------------------
+
+const samtInhalt = { art: 'ProjektSamtInhaltLoeschen' } as const;
+const leererBestand: Projektbestand = {
+  leistungsverzeichnisse: [],
+  angebote: [],
+  auftragsLeistungsverzeichnisse: [],
+  protokoll: [],
+};
+
+describe('ProjektSamtInhaltLoeschen', () => {
+  it('ohne Bestand weist der allgemeine Ausführer ab: ungueltige-eingabe am Feld bestand', () => {
+    const e = projektBefehlAusfuehren(projekt(), samtInhalt);
+    expect(e.ok ? null : { code: e.fehler.code, feld: e.fehler.feld }).toEqual({
+      code: 'ungueltige-eingabe',
+      feld: 'bestand',
+    });
+  });
+
+  it('mit Bestand: Projekt und Bestand vorher, beide nachher null', () => {
+    const p = projekt();
+    const cs = erwarteOk(projektSamtInhaltLoeschenAusfuehren(p, samtInhalt, beispielProjektbestand));
+    expect(cs).toEqual({
+      art: 'projektbestand',
+      projektId: PID,
+      projekt: { vorher: p, nachher: null },
+      bestand: { vorher: beispielProjektbestand, nachher: null },
+    });
+  });
+
+  it('ein leerer Bestand ist erlaubt', () => {
+    const cs = erwarteOk(projektSamtInhaltLoeschenAusfuehren(projekt(), samtInhalt, leererBestand));
+    expect(cs.bestand.vorher).toEqual(leererBestand);
+  });
+
+  it('ohne Projekt: befehl-nicht-zustaendig', () => {
+    const e = projektSamtInhaltLoeschenAusfuehren(null, samtInhalt, leererBestand);
+    expect(e.ok ? null : e.fehler.code).toBe('befehl-nicht-zustaendig');
+  });
+
+  it.each([
+    ['kein Objekt', null],
+    ['eine Liste', []],
+    ['ohne protokoll', { leistungsverzeichnisse: [], angebote: [], auftragsLeistungsverzeichnisse: [] }],
+    ['angebote keine Liste', { ...leererBestand, angebote: {} }],
+  ])('Bestand %s: ungueltige-eingabe am Feld bestand', (_, bestand) => {
+    const e = projektSamtInhaltLoeschenAusfuehren(
+      projekt(),
+      samtInhalt,
+      bestand as unknown as Projektbestand,
+    );
+    expect(e.ok ? null : { code: e.fehler.code, feld: e.fehler.feld }).toEqual({
+      code: 'ungueltige-eingabe',
+      feld: 'bestand',
+    });
+  });
+
+  it('die Umkehrung tauscht Projekt und Bestand; zweimal umgekehrt ist das ChangeSet selbst', () => {
+    expect(projektbestandChangeSetUmkehren(beispielChangeSetProjektSamtInhaltLoeschen)).toEqual(
+      beispielChangeSetProjektSamtInhaltLoeschenUmgekehrt,
+    );
+    expect(projektbestandChangeSetUmkehren(beispielChangeSetProjektSamtInhaltLoeschenUmgekehrt)).toEqual(
+      beispielChangeSetProjektSamtInhaltLoeschen,
+    );
   });
 });
 
