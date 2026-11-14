@@ -180,11 +180,7 @@ describe('Tor X4: Mängel und Bautagebuch, Kette ohne Oberfläche', () => {
         const liste = await maengelLaden(u.speicher, projekt.id);
         const jetzt = liste.ok ? liste.wert.find((x) => x.id === id) : undefined;
         if (jetzt === undefined) throw new Error('Mangel fehlt');
-        const b = mangelAngabenBefehl(
-          { ...entwurfAusMangel(jetzt), frist: datumDeFx(m.frist) },
-          null,
-          jetzt,
-        );
+        const b = mangelAngabenBefehl({ ...entwurfAusMangel(jetzt), frist: datumDeFx(m.frist) }, null, jetzt);
         if (!b.ok || b.wert === null) throw new Error('Angaben');
         expect((await mangelSitzung(u, projekt.id, jetzt).befehl(b.wert)).ok).toBe(true);
       }
