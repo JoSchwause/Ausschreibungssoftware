@@ -41,6 +41,7 @@ import {
   folgenZeilen,
   mengenAktualisieren,
 } from './folgen';
+import { ansatzText } from '../bim/darstellung'; // Ticket 155
 import { texte } from './texte';
 import { vergleichPfad } from './pfad';
 import { LISTE_SPALTEN, fruehereStaende, vergleichsansicht } from './vergleich';
@@ -425,7 +426,7 @@ function FolgenDesLv({
                 <th scope="row">{`${p.oz} ${p.kurztext}`}</th>
                 <td className="bim__zahl">{p.vorher === null ? '' : formatiereMengeDe(p.vorher)}</td>
                 <td className="bim__zahl">{formatiereMengeDe(p.nachher)}</td>
-                <td>{p.zeilen.map((z) => z.ausdruck).join(' + ')}</td>
+                <td>{ansatzText(p.zeilen)}</td>
               </tr>
             ))}
           </tbody>

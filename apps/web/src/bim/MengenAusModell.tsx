@@ -21,6 +21,7 @@ import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { BefundListe } from './BefundListe';
 import { ansatzText } from './darstellung';
 import { texte } from './texte';
+import { datumDe } from '../lv/kopfdaten';
 import { uebernahmeBefehle, uebernahmeVorschau } from './uebernahme';
 
 const t = texte.uebernahme;
@@ -149,7 +150,7 @@ function MengenDialog({
           wert={id}
           optionen={modelle.map((m) => ({
             wert: m.id,
-            label: `${m.name} (${m.datei.dateiname}, ${m.eingelesen})`,
+            label: `${m.name} (${m.datei.dateiname}, ${datumDe(m.eingelesen)})`,
           }))}
           onWertChange={setId}
         />
