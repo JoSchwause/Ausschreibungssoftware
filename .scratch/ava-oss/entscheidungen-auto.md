@@ -863,3 +863,10 @@ Question: 155 hat Punkte 1–5 und 7 erledigt, Punkt 6 (K-Teile: „Mangel aus B
 Decision: Alles bestätigt. Die Einzeiler sind Einhängestellen, keine Fachänderung. Die Kürzung von Punkt 6 und die Doppelmessung je Bauteil (Vertragsänderung) stehen im Bericht unter „nach Welle 7“. Der wackelige Test wird im Abschlusslauf auf ruhiger Maschine geprüft; fällt er dort weiter, untersucht 159 das Auswahlfeld in `ui-basis`. Die Messung des Preisspiegel-Budgets auf ruhiger Maschine gehört in den Abschlusslauf.
 Reason: Kürzungsreihenfolge §4; ohne Last gibt es keinen Befund, der eine Änderung rechtfertigt.
 Reversible: yes  Touches: apps/web/src/{bauzeit,bauleitung,honorar,bim,modellvergleich}, packages/bim, ui-modell, Bericht
+
+## D-100 Prüflauf der Integration: zwei echte Fehler
+Welle 7 · Prüflauf auf `1dbfdca` (Folge 156, 162) · decided by: orchestrator
+Question: Der Prüflauf (Lint, Typen, Unit, Web-E2E, `ui-grid`- und `speicher`-E2E, Last 20–33) fand neben Budget-Messungen unter Last zwei echte Fehler: (1) `packages/ui-grid/e2e/arbeitsflaeche.spec.ts:57` erwartet die zugängliche Bezeichnung „Ordnungszahl“ am Spaltenkopf mit sichtbarem Text „OZ“ (130), 133 machte daraus auch die Bezeichnung „OZ“; (2) `apps/web/e2e/druckprofil.spec.ts:127`: nach dem Löschen eines Profils hält keine Option den Fokus.
+Decision: (1) Sichtbar „OZ“, zugängliche Bezeichnung „Ordnungszahl“ (wie D-130 und im Sinn von D-133: Ordnungszahl ist der Fließtext-Begriff, ein Bildschirmleser liest ihn vor; U8). Behebt 156 als derzeitiger Schreiber in `ui-grid`. (2) Kleines Fix-Ticket 162 (Opus) für `apps/web/src/ausgabe/`, Ursache finden statt Test abschwächen. Budgets: zweite Messung im Abschlusslauf auf ruhiger Maschine; `bim-tastatur.spec.ts:58` wackelte einmal (wie :135, D-99).
+Reason: Q2 verlangt grüne E2E vor dem Tor; beide Fehler kommen aus dem Zusammenspiel zweier gemergter Tickets.
+Reversible: yes  Touches: packages/ui-grid, apps/web/src/ausgabe, Ticket 162
