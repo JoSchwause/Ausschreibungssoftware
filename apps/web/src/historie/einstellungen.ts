@@ -49,6 +49,11 @@ export function aktuelleEinstellungen(): Einstellungen | null {
 /** Die zuletzt geladene Sitzung, für Schreiber ohne React (etwa `kosten/bezeichnungen.ts`). */
 let letzteSitzung: EinstellungenSitzung | null = null;
 
+function merkeSitzung(s: EinstellungenSitzung, e: Einstellungen): void {
+  letzteSitzung = s;
+  zuletzt = e;
+}
+
 export function aktuelleEinstellungenSitzung(): EinstellungenSitzung | null {
   return letzteSitzung;
 }
@@ -171,8 +176,7 @@ export class EinstellungenSitzung {
 
   #setze(e: Einstellungen): void {
     this.#stand = e;
-    zuletzt = e;
-    letzteSitzung = this;
+    merkeSitzung(this, e);
     this.#version += 1;
     for (const h of this.#hoerer) h();
   }

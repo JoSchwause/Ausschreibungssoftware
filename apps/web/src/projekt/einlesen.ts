@@ -23,13 +23,12 @@ export async function projektdateiEinlesen(
   inhalt: string,
   kopieName?: string,
 ): Promise<Ergebnis<ProjektdateiEinleseergebnis, Speicherfehler>> {
-  const einlesen = u.speicher.projektdateiEinlesen;
-  if (einlesen === undefined) {
+  if (u.speicher.projektdateiEinlesen === undefined) {
     // Ein Speicher vor Schema 7: ohne Kopie und ohne Einstellungen wie bisher.
     const r = await u.speicher.projektdateiImportieren(inhalt);
     return r.ok ? { ok: true, wert: { projektId: r.wert, einstellungen: null } } : r;
   }
-  return einlesen.call(u.speicher, inhalt, {
+  return u.speicher.projektdateiEinlesen(inhalt, {
     einstellungsuebernahme: { id: u.ids.protokoll(), wer: u.nutzer, wann: u.uhr() },
     ...(kopieName === undefined ? {} : { alsKopie: { ids: u.ids, name: kopieName } }),
   });
