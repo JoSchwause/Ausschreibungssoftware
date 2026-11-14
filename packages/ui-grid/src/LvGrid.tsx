@@ -44,6 +44,7 @@ import { Suchleiste } from './Suchleiste';
 import { STANDARDSPALTEN, features, spaltenDefinitionen } from './tabelle';
 import {
   SPALTENKOPF,
+  SPALTENNAME,
   SPALTENTITEL,
   frageLoeschen,
   meldungBreite,
@@ -1293,14 +1294,14 @@ export function LvGrid(props: LvGridProps): ReactElement {
             {kopf.map((h, i) => {
               const spalte = spalten[i];
               if (spalte === undefined) return null;
-              const kurz = SPALTENKOPF[spalte] !== SPALTENTITEL[spalte];
+              const kurz = SPALTENNAME[spalte] !== SPALTENKOPF[spalte];
               return (
                 <div
                   key={h.id}
                   role="columnheader"
                   aria-colindex={i + 1}
-                  aria-label={kurz ? SPALTENTITEL[spalte] : undefined}
-                  title={kurz ? SPALTENTITEL[spalte] : undefined}
+                  aria-label={kurz ? SPALTENNAME[spalte] : undefined}
+                  title={kurz ? SPALTENNAME[spalte] : undefined}
                   className={`tx-grid__kopfzelle tx-grid__kopfzelle--${spalte}`}
                 >
                   <span className="tx-grid__kopftext">{SPALTENKOPF[spalte]}</span>

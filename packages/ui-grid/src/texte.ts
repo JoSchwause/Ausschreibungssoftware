@@ -15,10 +15,20 @@ export const SPALTENTITEL: Readonly<Record<LvSpalte, string>> = {
 };
 
 /**
- * Sichtbarer Kopf je Spalte: wie `SPALTENTITEL`, nur die Ordnungszahl als „OZ“, weil ihre Spalte so schmal sein darf wie
- * die OZ selbst (Ticket 130). Der zugängliche Name bleibt der volle Titel.
+ * Sichtbarer Kopf je Spalte: wie `SPALTENTITEL`, die Ordnungszahl als „OZ“, weil ihre Spalte so schmal sein darf wie die OZ
+ * selbst (Ticket 130).
  */
 export const SPALTENKOPF: Readonly<Record<LvSpalte, string>> = { ...SPALTENTITEL, ordnungszahl: 'OZ' };
+
+/**
+ * Zugänglicher Name des Spaltenkopfs (und Tooltip), wo er vom sichtbaren Kopf abweicht: Ein Bildschirmleser liest bei der
+ * Spalte „OZ“ den Fließtext-Begriff vor (Ticket 130, Folge 156). Mit Abkürzung dahinter, weil „Ordnungszahl“ allein keine
+ * Beschriftung sein soll (Sprachfestlegung: Spaltenkopf „OZ“).
+ */
+export const SPALTENNAME: Readonly<Record<LvSpalte, string>> = {
+  ...SPALTENKOPF,
+  ordnungszahl: 'Ordnungszahl (OZ)',
+};
 
 /** Ansage nach dem Ändern einer Spaltenbreite per Tastatur, z. B. „Spalte Menge: 140 Pixel breit.“ */
 export function meldungBreite(spalte: string, breite: number | null): string {
