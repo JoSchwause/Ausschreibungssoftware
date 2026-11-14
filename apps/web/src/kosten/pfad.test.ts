@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Kostenermittlung, KostenermittlungId, ProjektId } from '@tethys/vertrag';
 import { describe, expect, it } from 'vitest';
-import { kontrollePfad, kostenPfad, kostenRoute, kostenZiel, kostenermittlungPfad } from './pfad';
+import { bezeichnungenPfad, kontrollePfad, kostenPfad, kostenRoute, kostenZiel, kostenermittlungPfad } from './pfad';
 
 const p = 'p1' as ProjektId;
 const k = (id: string): Kostenermittlung => ({
@@ -21,6 +21,10 @@ describe('Pfade der Kostenseiten', () => {
       projektId: p,
       id: 'k1',
     });
+  });
+
+  it('der Verweis zum Einlesen der Bezeichnungen führt auf die Liste, an ihren Abschnitt', () => {
+    expect(bezeichnungenPfad(p)).toBe('/projekt/p1/kosten#bezeichnungen');
   });
 
   it('andere Pfade sind keine Kostenseiten', () => {
