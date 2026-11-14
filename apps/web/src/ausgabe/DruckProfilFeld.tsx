@@ -31,6 +31,8 @@ import {
   profilAnlegen,
   profilGleich,
   profilImportieren,
+  profilNachLoeschen,
+  standardProfil,
   zurueckAlsDatei,
   zurueckNichtLesbar,
   zeilenLesen,
@@ -110,6 +112,15 @@ export function DruckProfilFeld({
     arbeit.langtext.art === 'zeilen' ? String(arbeit.langtext.anzahl) : '3',
   );
   const datei = useRef<HTMLInputElement>(null);
+  // Ticket 162: Solange das Löschen gespeichert wird, warten die Felder; danach steht der Fokus auf der Profilauswahl.
+  const [loeschtGerade, setLoeschtGerade] = useState(false);
+  const [fokusAufAuswahl, setFokusAufAuswahl] = useState(false);
+  const auswahlZeile = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!fokusAufAuswahl || gesperrt || loeschtGerade) return;
+    auswahlZeile.current?.querySelector<HTMLElement>('[role="combobox"]')?.focus();
+    setFokusAufAuswahl(false);
+  }, [fokusAufAuswahl, gesperrt, loeschtGerade]);
 
   const alle = alleProfile(w, eigene);
   const vorlage = alle.find((p) => p.name === gewaehlt);
@@ -141,8 +152,7 @@ export function DruckProfilFeld({
   const fehlt = vorlage === undefined;
   useEffect(() => {
     if (!fehlt) return;
-    const standard = w.STANDARD_DRUCKPROFILE[2] ?? w.STANDARD_DRUCKPROFILE[0];
-    if (standard !== undefined) uebernehme(standard);
+    uebernehme(standardProfil(w));
     // Nur, wenn das gewählte Profil verschwindet.
   }, [fehlt]);
 
@@ -180,14 +190,26 @@ export function DruckProfilFeld({
     setEntfernenFrage(false);
     zeige({ titel: t.zurueckEntfernt, art: 'erfolg' });
   };
+  // Ticket 162 (U3): Die Auswahl wechselt sofort auf das nächste Profil (sonst das Standardprofil), und die Felder warten,
+  // bis das Löschen gespeichert ist. Vorher ließ sich die Liste öffnen, solange das gelöschte Profil noch gewählt war: Es
+  // hielt den Fokus und nahm ihn beim Verschwinden mit; die Meldung danach fing zudem Escape ab.
   const loeschen = async (): Promise<void> => {
     setLoeschenFrage(false);
     const name = gewaehlt;
-    const a = await einstellungen.sitzung.befehl({ art: 'DruckprofilEntfernen', name });
-    if (!pruefe(a)) return;
-    const standard = w.STANDARD_DRUCKPROFILE[2] ?? w.STANDARD_DRUCKPROFILE[0];
-    if (standard !== undefined) uebernehme(standard);
-    zeige({ titel: t.geloescht(name), art: 'erfolg' });
+    const vorher = arbeit;
+    uebernehme(profilNachLoeschen(w, eigene, name));
+    setLoeschtGerade(true);
+    try {
+      const a = await einstellungen.sitzung.befehl({ art: 'DruckprofilEntfernen', name });
+      if (!pruefe(a)) {
+        uebernehme(vorher);
+        return;
+      }
+      zeige({ titel: t.geloescht(name), art: 'erfolg' });
+    } finally {
+      setLoeschtGerade(false);
+      setFokusAufAuswahl(true);
+    }
   };
   const importieren = async (f: File): Promise<void> => {
     let text: string;
@@ -227,8 +249,8 @@ export function DruckProfilFeld({
 
   return (
     // Ticket 150: Strg+Z und Strg+Y gelten hier dem Rückgängig der Einstellungen (D-82 M1).
-    <fieldset className="gaeb__profil" disabled={gesperrt} onKeyDown={historie.tasten}>
-      <div className="gaeb__auswahl">
+    <fieldset className="gaeb__profil" disabled={gesperrt || loeschtGerade} onKeyDown={historie.tasten}>
+      <div className="gaeb__auswahl" ref={auswahlZeile}>
         <Auswahl
           label={t.auswahl}
           optionen={alle.map((p) => ({ wert: p.name, label: p.name }))}

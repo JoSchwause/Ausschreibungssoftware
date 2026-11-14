@@ -113,6 +113,45 @@ export const texte = {
     maengel: (n: number): string => `Mängel (${String(n)})`,
     bautagebuch: (n: number): string => `Bautagebuch (${String(n)} Einträge)`,
   },
+  // Projekt samt Inhalt löschen (E8, Q5): Anzahl je Art, zuerst die Sicherung, ausdrückliche Bestätigung, Rückgängig
+  samtInhalt: {
+    frage: (name: string): string =>
+      `Das Projekt „${name}“ hat noch Inhalt. Es lässt sich nur zusammen mit diesem Inhalt löschen:`,
+    knopf: 'Projekt samt Inhalt löschen …',
+    titel: 'Projekt samt Inhalt löschen',
+    sichernHinweis:
+      'Zuerst die Projektdatei sichern: Mit ihr lässt sich das Projekt auch nach dem Schließen der App wieder einlesen.',
+    sichern: 'Projektdatei sichern',
+    liste: 'Inhalt des Projekts',
+    einleitung: (name: string): string =>
+      `Gelöscht werden das Projekt „${name}“ mit Bietern und Befehlsprotokoll und dieser Inhalt:`,
+    bestaetigung: (name: string): string => `Ja, das Projekt „${name}“ mit allem Inhalt löschen`,
+    rueckgaengig: 'In dieser Sitzung holt „Rückgängig“ alles zurück.',
+    loeschen: 'Projekt samt Inhalt löschen',
+    abbrechen: 'Abbrechen',
+    zaehlenFehler: 'Inhalt des Projekts nicht gelesen',
+    geloescht: 'Projekt samt Inhalt gelöscht',
+    geloeschtHinweis: '„Rückgängig“ holt es in dieser Sitzung zurück.',
+    konflikt: 'Das Projekt hat sich inzwischen geändert; es wurde nichts gelöscht. Bitte erneut versuchen.',
+    arten: {
+      leistungsverzeichnisse: (n: number): string => (n === 1 ? '1 LV' : `${String(n)} LVs`),
+      lvStaende: (n: number): string => (n === 1 ? '1 LV-Stand' : `${String(n)} LV-Stände`),
+      angebote: (n: number): string => (n === 1 ? '1 Angebot' : `${String(n)} Angebote`),
+      auftragsLeistungsverzeichnisse: (n: number): string =>
+        n === 1 ? '1 Auftrags-LV' : `${String(n)} Auftrags-LVs`,
+      aufmasse: (n: number): string => (n === 1 ? '1 Aufmaßblatt' : `${String(n)} Aufmaßblätter`),
+      rechnungen: (n: number): string => (n === 1 ? '1 Rechnung' : `${String(n)} Rechnungen`),
+      kostenermittlungen: (n: number): string =>
+        n === 1 ? '1 Kostenermittlung' : `${String(n)} Kostenermittlungen`,
+      bauwerksmodelle: (n: number): string => (n === 1 ? '1 Modell' : `${String(n)} Modelle`),
+      bauzeitenplaene: (n: number): string => (n === 1 ? '1 Bauzeitenplan' : `${String(n)} Bauzeitenpläne`),
+      honorarberechnungen: (n: number): string =>
+        n === 1 ? '1 Honorarberechnung' : `${String(n)} Honorarberechnungen`,
+      maengel: (n: number): string => (n === 1 ? '1 Mangel' : `${String(n)} Mängel`),
+      bautagebuch: (n: number): string =>
+        n === 1 ? '1 Bautagebucheintrag' : `${String(n)} Bautagebucheinträge`,
+    },
+  },
   bereiche: {
     laden: 'Das Projekt wird geladen …',
     titel: (bereich: string, projekt: string): string => `${bereich} – ${projekt}`,

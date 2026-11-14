@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import type {
   Ansatzzeile,
   Aufmass,
+  AufmassBefehl,
   Aufmassposition,
   AuftragsLeistungsverzeichnisId,
   Einheitspreis,
@@ -17,7 +18,11 @@ import type {
   Ordnungszahl,
   PositionId,
   ProjektId,
+  Rechnung,
+  RechnungBefehl,
   TitelId,
+  Zahlungsbefund,
+  Zahlungsstand,
 } from '@tethys/vertrag';
 
 interface FxKnoten {
@@ -82,6 +87,10 @@ interface Fx {
     };
   };
   readonly aufmasse: readonly { readonly aufmass: FxAufmass }[];
+  readonly korrektur: {
+    readonly aufmassId: string;
+    readonly befehl: { readonly position: FxAufmass['positionen'][number] };
+  };
   readonly rechnungen: readonly FxRechnung[];
   readonly pruefungen: Readonly<
     Record<'ar1' | 'ar2VorKorrektur' | 'ar2NachKorrektur', { readonly kette: FxKette }>
@@ -138,6 +147,21 @@ export function m4Nachtragsknoten(auftragsLvId: AuftragsLeistungsverzeichnisId):
   });
 }
 
+/** Ganze Zahlen einer Blattzeile stehen in der Fixture als Text (D-85.4): Zeile und Formel. */
+const blattzeile = (p: FxAufmass['positionen'][number]): Aufmassposition => ({
+  ...p,
+  mengenansatz:
+    p.mengenansatz === null
+      ? null
+      : p.mengenansatz.map((z) => ({ ...z, zeile: Number(z.zeile), formel: Number(z.formel) })),
+});
+
+/** Die Korrektur an Blatt 1 nach der Freigabe von AR 1 (M4, D-38) als Befehl am Blatt. */
+export const M4_KORREKTUR: AufmassBefehl = {
+  art: 'AufmasspositionSetzen',
+  position: blattzeile(fx.korrektur.befehl.position),
+};
+
 /** Aufmaßblatt `i` (0: Blatt 1) der Fixture für Projekt und Auftrags-LV der App. */
 export function m4Blatt(
   i: number,
@@ -147,12 +171,50 @@ export function m4Blatt(
   const a = fx.aufmasse[i]?.aufmass;
   if (a === undefined) throw new Error(`Fixture: kein Blatt ${String(i)}`);
   // Ganze Zahlen stehen in der Fixture als Text (D-85.4): Nummer, Zeile und Formel.
-  const positionen = a.positionen.map((p) => ({
-    ...p,
-    mengenansatz:
-      p.mengenansatz === null
-        ? null
-        : p.mengenansatz.map((z) => ({ ...z, zeile: Number(z.zeile), formel: Number(z.formel) })),
-  }));
+  const positionen = a.positionen.map(blattzeile);
   return { ...a, nummer: Number(a.nummer), projektId, auftragsLvId, positionen };
 }
+
+// Ticket 152 (A5, D-72): `fixtures/typisch-zahlungen.json` (Ticket 143). Rechnungen in der Form von `Rechnung` (v1.7b,
+// D-143.1), Sollwerte von Kette und Zahlungsstand unabhängig hergeleitet (`herleitung` der Fixture).
+
+/** Die Kette einer Prüfung mit A5: dazu die Vertragsstrafe zwischen Umlagen und Einbehalt (D-143.6). */
+export interface FxKetteA5 extends FxKette {
+  readonly vertragsstrafe: string;
+}
+
+interface FxZahlungsset {
+  readonly befehle: Readonly<
+    Record<
+      'ar1' | 'ar2',
+      {
+        readonly vorFreigabe: readonly RechnungBefehl[];
+        readonly freigabe: RechnungBefehl;
+        readonly nachFreigabe: readonly RechnungBefehl[];
+      }
+    >
+  >;
+  readonly rechnungen: readonly Rechnung[];
+  readonly pruefungen: Readonly<
+    Record<'ar1' | 'ar2', { readonly kette: FxKetteA5; readonly zahlungsstand: Zahlungsstand }>
+  >;
+  readonly varianten: readonly {
+    readonly name: string;
+    readonly rechnung: Rechnung;
+    readonly zahlungsstand: Zahlungsstand;
+    readonly befunde: readonly Zahlungsbefund[];
+  }[];
+}
+
+const zs = JSON.parse(
+  readFileSync(new URL('../../../fixtures/typisch-zahlungen.json', import.meta.url), 'utf8'),
+) as FxZahlungsset;
+
+/** Die Befehle von AR 1 und AR 2 vor der Freigabe, die Freigabe und die Zahlungen danach. */
+export const A5_BEFEHLE = zs.befehle;
+/** AR 1 und AR 2 nach allen Befehlen (freigegeben, mit Zahlungen). */
+export const A5_RECHNUNGEN = zs.rechnungen;
+/** Sollwerte: Kette mit Vertragsstrafe und Zahlungsstand je Rechnung. */
+export const A5_PRUEFUNGEN = zs.pruefungen;
+/** Varianten (ohne neue Felder, Zahlung nach Fristende, Überzahlung, ohne Eingang) mit ihrem Zahlungsstand. */
+export const A5_VARIANTEN = zs.varianten;

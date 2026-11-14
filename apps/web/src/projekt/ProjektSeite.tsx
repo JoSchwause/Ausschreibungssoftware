@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Seite `/projekt/<id>`: die Übersicht des Projekts (Ticket 131, B-03). Kopf mit Stammdaten und gruppierten Aktionen,
-// „Projekt löschen“ im Menü „Weitere Aktionen“; darunter Abschnitte mit den LVs (Angebote, Zuschlag), den Auftrags-LVs
+// „Projekt löschen“ im Menü „Weitere Aktionen“ (mit Inhalt: „Projekt samt Inhalt löschen …“, E8); darunter Abschnitte mit den LVs (Angebote, Zuschlag), den Auftrags-LVs
 // (Nachträge, Aufmaß, Rechnungen), den Kosten und den Modulen in Vorschau. Jede Änderung ist genau ein Befehl durch Kern
 // und Speicher (A5).
 //
 // Die Listen kommen aus den Repositories (`projektstandLaden`), ohne ein LV ganz zu laden (D-43, D-62).
 
-import { Button, Dialog, Eingabefeld, Werkzeuggruppe } from '@tethys/ui-basis';
+import { Button, Eingabefeld, useToast, Werkzeuggruppe } from '@tethys/ui-basis';
 import type { ProjektId } from '@tethys/vertrag';
 import { useState } from 'react';
 import type { ReactElement } from 'react';
@@ -33,6 +33,8 @@ import { Verweis } from '../ui/Verweis';
 import { projektangabenBefehl, projektFormular, type ProjektFormular } from './angaben'; // Ticket 150
 import { FormDialog } from './FormDialog';
 import { LvAbschnitt, useLoeschMeldung } from './LvAbschnitt';
+import { ProjektLoeschenDialog, type Anzahlen } from './ProjektLoeschenDialog';
+import { anzahlJeArt, projektinhaltLesen, projektSamtInhaltLoeschen } from './samtInhalt';
 import { nachtraegeZu, projektstandLaden, type Projektstand } from './stand';
 import { texte } from './texte';
 import './projekt.css';
@@ -166,8 +168,10 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
   const { lage, neuLaden } = useSeitenladen(({ speicher }) => projektstandLaden(speicher, id), [id]);
   const sicherung = useSicherung(); // Ticket 62
   const weg = befehlswegFuer(u);
-  // --- Löschen des Projekts (Ticket 48, Punkt 5) ------------------------------------------------------------------
-  const [loeschen, setLoeschen] = useState(false);
+  const { zeige } = useToast();
+  // --- Löschen des Projekts (Ticket 48, Punkt 5), mit Inhalt samt Inhalt (E8, D-96) ----------------------------------
+  // `null`: Dialog zu; sonst die Anzahl je Art des Inhalts (leer: ohne Inhalt).
+  const [loeschen, setLoeschen] = useState<Anzahlen | null>(null);
   // --- Projektangaben (Ticket 150, E10) ----------------------------------------------------------------------
   const [angaben, setAngaben] = useState<ProjektFormular | null>(null);
   const [nameFehlt, setNameFehlt] = useState(false);
@@ -184,7 +188,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
     );
   }
   const stand = lage.wert;
-  const { projekt, lvs } = stand;
+  const { projekt } = stand;
 
   const angabenSpeichern = async (): Promise<void> => {
     if (angaben === null) return;
@@ -217,9 +221,27 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
     .join(', ');
 
   const loeschenBestaetigt = async (): Promise<void> => {
-    setLoeschen(false);
+    setLoeschen(null);
     const a = await weg.projekt(projekt).befehl({ art: 'ProjektLoeschen' });
     if (loeschMeldung(a, htexte.loeschen.projektKonflikt)) gehe('/');
+  };
+
+  /** Öffnet „Projekt löschen“ mit der Anzahl je Art aus dem gespeicherten Bestand. */
+  const loeschenFragen = async (): Promise<void> => {
+    const r = await projektinhaltLesen(u.speicher, projekt.id);
+    if (!r.ok) {
+      speicherfehler(r.fehler, texte.samtInhalt.zaehlenFehler);
+      return;
+    }
+    setLoeschen(anzahlJeArt(r.wert.bestand));
+  };
+
+  const samtInhaltLoeschen = async (): Promise<void> => {
+    setLoeschen(null);
+    const a = await projektSamtInhaltLoeschen(weg, projekt.id);
+    if (!loeschMeldung(a, texte.samtInhalt.konflikt)) return;
+    zeige({ titel: texte.samtInhalt.geloescht, beschreibung: texte.samtInhalt.geloeschtHinweis });
+    gehe('/');
   };
 
   const exportieren = async (): Promise<void> => {
@@ -276,12 +298,7 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
           <GaebEinlesen projekt={projekt} onAngelegt={neuLaden} />
         </div>
         <Werkzeuggruppe titel="…" beschriftung={t.weitere} ausrichtung="end" pfeil={false}>
-          <Button
-            variante="gefahr"
-            onClick={() => {
-              setLoeschen(true);
-            }}
-          >
+          <Button variante="gefahr" onClick={() => void loeschenFragen()}>
             {htexte.loeschen.projektKnopf}
           </Button>
         </Werkzeuggruppe>
@@ -289,29 +306,16 @@ export function ProjektSeite({ id, gehe }: { id: ProjektId; gehe: (pfad: string)
       <LvAbschnitt stand={stand} neuLaden={neuLaden} gehe={gehe} />
       <AuftragsAbschnitt stand={stand} gehe={gehe} />
       <KostenUndVorschau stand={stand} gehe={gehe} />
-      <Dialog
-        offen={loeschen}
-        onOffenChange={(o) => {
-          if (!o) setLoeschen(false);
+      <ProjektLoeschenDialog
+        projekt={projekt}
+        anzahlen={loeschen}
+        onSchliessen={() => {
+          setLoeschen(null);
         }}
-        titel={htexte.loeschen.projektTitel}
-        fuss={
-          <>
-            <Button
-              onClick={() => {
-                setLoeschen(false);
-              }}
-            >
-              {htexte.loeschen.abbrechen}
-            </Button>
-            <Button variante="gefahr" onClick={() => void loeschenBestaetigt()}>
-              {htexte.loeschen.bestaetigen}
-            </Button>
-          </>
-        }
-      >
-        <p>{htexte.loeschen.projektFrage(projekt.name, lvs.length)}</p>
-      </Dialog>
+        onLoeschen={() => void loeschenBestaetigt()}
+        onSamtInhaltLoeschen={() => void samtInhaltLoeschen()}
+        onSichern={() => void exportieren()}
+      />
       <FormDialog
         offen={angaben !== null}
         titel={texte.projekt.angabenTitel}

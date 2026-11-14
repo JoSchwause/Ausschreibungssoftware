@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Ticket 88, Punkt 1: die Rechnungen eines Auftrags-LV als Tabelle: Nummer, Art, Eingang, Rechnungsnummer des
 // Auftragnehmers, gefordert brutto, geprüfter Zahlbetrag (freigegeben: der eingefrorene, sonst der gerechnete) und Status.
+// Ticket 152 (A5): dazu der offene Betrag (Zahlbetrag − verwirklichter Skonto − Bauabzugsteuer − Zahlungen, D-72).
 // Zahlen nur hier am Rand de-DE formatiert (N4).
 
 import type { Rechnung } from '@tethys/vertrag';
@@ -8,7 +9,7 @@ import type { ReactElement } from 'react';
 import { datumDe } from '../lv/kopfdaten';
 import { formatiereBetragDe } from '../lv/zahlen';
 import { rechnungPfad } from './pfad';
-import { gepruefterZahlbetrag } from './pruefung';
+import { pruefen } from './pruefung';
 import type { Rechnungsstand } from './rechnungen';
 import { Verweis } from '../ui/Verweis';
 import { texte } from './texte';
@@ -36,11 +37,13 @@ export function Rechnungsliste({
           <th scope="col">{t.gefordertBrutto}</th>
           <th scope="col">{t.zahlbetrag}</th>
           <th scope="col">{t.status}</th>
+          <th scope="col">{texte.zahlung.offen}</th>
         </tr>
       </thead>
       <tbody>
         {rechnungen.map((r) => {
           const brutto = r.gefordert?.brutto ?? null;
+          const zs = pruefen(r, stand, rechnungen).zahlungsstand;
           return (
             <tr key={r.id}>
               <th scope="row">
@@ -56,9 +59,12 @@ export function Rechnungsliste({
               <td>{r.rechnungsnummerAuftragnehmer ?? '–'}</td>
               <td className="rechnung__zahl">{brutto === null ? '–' : formatiereBetragDe(brutto)}</td>
               <td className="rechnung__zahl" data-testid="zahlbetrag">
-                {formatiereBetragDe(gepruefterZahlbetrag(r, stand, rechnungen))}
+                {formatiereBetragDe(zs.zahlbetrag)}
               </td>
               <td data-testid="status">{r.freigabe === null ? t.offen : t.freigegeben}</td>
+              <td className="rechnung__zahl" data-testid="offen">
+                {formatiereBetragDe(zs.offen)}
+              </td>
             </tr>
           );
         })}

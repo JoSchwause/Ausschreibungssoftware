@@ -8,6 +8,8 @@ import { aufmassBefehlAusfuehren } from '@tethys/abrechnung';
 import { auftragsLvBefehlAusfuehren } from '@tethys/kern';
 import type {
   Aufmass,
+  AufmassBefehl,
+  AufmassId,
   AuftragsLeistungsverzeichnisId,
   Ergebnis,
   Knoten,
@@ -22,6 +24,23 @@ export function aufmassSchreiben(u: Umgebung, aufmass: Aufmass): Promise<Ergebni
     const r = aufmassBefehlAusfuehren(null, befehl);
     if (!r.ok) return { ok: false, fehler: r.fehler.code };
     const e = eintrag(u, aufmass.projektId, { art: 'aufmass', id: aufmass.id }, befehl);
+    const s = await eintragSchreiben(u, e, r.wert);
+    return s.ok ? { ok: true, wert: undefined } : { ok: false, fehler: s.fehler.code };
+  });
+}
+
+/** Ein Befehl an ein vorhandenes Blatt (Ticket 152: die Korrektur aus M4 für die E2E der Zahlungen). */
+export function aufmassBefehlSchreiben(
+  u: Umgebung,
+  aufmassId: AufmassId,
+  befehl: AufmassBefehl,
+): Promise<Ergebnis<void, string>> {
+  return befehlswegFuer(u).reihe(async () => {
+    const z = await u.speicher.aufmasse.laden(aufmassId);
+    if (!z.ok) return { ok: false, fehler: z.fehler.code };
+    const r = aufmassBefehlAusfuehren(z.wert, befehl);
+    if (!r.ok) return { ok: false, fehler: r.fehler.code };
+    const e = eintrag(u, z.wert.aufmass.projektId, { art: 'aufmass', id: aufmassId }, befehl);
     const s = await eintragSchreiben(u, e, r.wert);
     return s.ok ? { ok: true, wert: undefined } : { ok: false, fehler: s.fehler.code };
   });
@@ -55,6 +74,8 @@ export function nachtragSchreiben(
 export interface RechnungTestpfad {
   /** Legt ein Aufmaßblatt an (Vertragsform `Aufmass`); `true`: gespeichert. */
   aufmassAnlegen(aufmass: Aufmass): Promise<boolean>;
+  /** Schickt einen Befehl an ein vorhandenes Blatt; `true`: gespeichert. */
+  aufmassBefehl(aufmassId: AufmassId, befehl: AufmassBefehl): Promise<boolean>;
   /** Übernimmt Nachtragsknoten ins Auftrags-LV; `true`: gespeichert. */
   nachtragUebernehmen(
     auftragsLvId: AuftragsLeistungsverzeichnisId,
@@ -67,6 +88,9 @@ export function rechnungTestpfad(u: Umgebung): RechnungTestpfad {
   return {
     async aufmassAnlegen(aufmass) {
       return (await aufmassSchreiben(u, aufmass)).ok;
+    },
+    async aufmassBefehl(aufmassId, befehl) {
+      return (await aufmassBefehlSchreiben(u, aufmassId, befehl)).ok;
     },
     async nachtragUebernehmen(auftragsLvId, nachtragLvId, knoten) {
       return (await nachtragSchreiben(u, auftragsLvId, nachtragLvId, knoten)).ok;

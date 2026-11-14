@@ -13,10 +13,11 @@ import type {
   ProjektId,
   Speicherfehler,
 } from '@tethys/vertrag';
+import { einstellungenBefehlAusfuehren } from '@tethys/kern';
 import { LEERE_EINSTELLUNGEN } from '@tethys/vertrag';
 import { schreibeAggregateDerDatei } from './aggregatarten';
 import { dekodiereProjektdatei } from './dekoder';
-import { einstellungenUebernehmen, einstellungsbericht } from './einstellungen';
+import { einstellungsbericht } from './einstellungen';
 import { abbruch, fehler, SpeicherAbbruch } from './ergebnis';
 import { fange, fehlerAusAusnahme, istAusgabefehler } from './fehler';
 import { ausBase64, base64, inflateRawHoechstens, sha256Hex } from './komprimierung';
@@ -237,11 +238,10 @@ export function uebernimmEinstellungenDerDatei(
   if (d.einstellungen === undefined || kopf === undefined) return null;
   const befehl = { art: 'EinstellungenUebernehmen', einstellungen: d.einstellungen } as const;
   const vorher = leseEinstellungen(db);
-  // Die Regel des Ausführers im Kern (Ticket 137); bis zu dessen Merge nach derselben Regel hier (`einstellungenUebernehmen`).
-  const cs: EinstellungenChangeSet = {
-    art: 'einstellungen',
-    einstellungen: { vorher, nachher: einstellungenUebernehmen(vorher, befehl.einstellungen) },
-  };
+  // Der Ausführer des Kerns (Ticket 137, D-87 (3)); er prüft auch die Form des Blocks.
+  const r = einstellungenBefehlAusfuehren(vorher, befehl);
+  if (!r.ok) return abbruch('datei-ungueltig', `$.einstellungen: ${r.fehler.meldung}`);
+  const cs: EinstellungenChangeSet = r.wert;
   const bericht = einstellungsbericht(d.einstellungen, cs);
   if (bericht.uebernommen.length > 0) {
     wendeEinstellungenAn(db, cs);

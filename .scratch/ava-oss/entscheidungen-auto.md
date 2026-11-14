@@ -898,3 +898,32 @@ Question: Welche Befunde werden in dieser Welle behoben, welche bestätigt, welc
 Decision: **Sofort an laufende Tickets:** MUST-1/PA1 an 161 (Präfix-Vergleich des Protokolls beim Löschen: das gespeicherte Protokoll muss mit `bestand.vorher.protokoll` beginnen, angehängte Einträge sind erlaubt; Test löschen → Undo → Wiederholen; dazu die Umstellung von `uebernimmEinstellungenDerDatei` auf den Kern-Ausführer); PA3 an 152. **Ticket 159, zwei Umsetzer parallel, ohne die Ordner der laufenden Tickets 152 (`abrechnung/`, `rechnung/`), 161 (`kern`, `speicher`, `projekt/`, `historie/`), 162 (`apps/web/src/ausgabe/`):** 159a Pakete – SA1, SA2+SA8 (ein Weg für die Angebotsbefunde, „Gesamtpreis“), SA3, SA4 + SOLL-2 (Glossar „Auszahlungsszenario“, „Zahlungsfreigabe“, „GAEB 90“, „GAEB 2000“, „Vorschau“ in beiden Bedeutungen (SB11)), SA7, SA9, SA10 (`form.ts` mit `KALENDERDATUM_MUSTER`, Kalender einmal in `abrechnung`), PA2, SB3 (Angebotspreise im gemeinsamen Grid aus `ui-grid`, App-Teil in `gaeb/`), SB4 (Belege § 48 EStG, § 16 VOB/B in Fixture und README), Vertragskommentar zu D-104 (D-160.5/.6), die Reste aus D-87 (`vergabe`/`gaeb` nutzen `bieterangabenNormalisieren`, `KOSTENGRUPPENNUMMER_MUSTER` statt `KOSTENGRUPPE_FORM`); 159b App – SB1/PB3 (deutsche Fehlertexte mit nächstem Schritt in allen PDF-Dialogen und Workern, Texte in `texte.ts`), SB2/PB4 (Fehler sichtbar, leere CSV löscht nichts ohne Rückfrage), SB6+SB7 (Kosten-PDF im Worker, ein Schriftlader und ein Worker-Start für alle PDF-Worker außerhalb der gesperrten Ordner), PB1, PB2, PB5 (Annahmen: Vertragsstrafe kumuliert und vorgeschlagen, ABC-Bezug umschaltbar, Ausreißer über EP), PB6, PB7, SB13 (Pfade aus `ui/pfade.ts`), und die gesammelten Reste aus D-92, D-95, D-98, D-101 (`ExcelBefunde` ohne Codes in `ausgabe/`-App → erst nach 162; unbenutzte Hilfe-Texte; `gaeb.ts:60`; E2E GAEB 2000; `auftragsLvBefehlAusfuehren` aus `@tethys/vergabe`; `PdfMitVorschau` nach `ui/`; `lv-bedienung.spec` über den echten Dialog; `AuftragsLvSeite` mit `alleZeilen`; Ausnahme in `e2e-basispfad/basispfad.spec.ts:14` entfällt). **Bestätigt, keine Änderung:** SB5 (ADR 0012 `accepted` hat der Nutzer mit G-62 verlangt, der Nachtrag folgt G-61), SB14 (D-90), SA5 (die Folgezeilen in fremden Paketen waren vom Typcheck erzwungen und in den Commits markiert, wie in jeder Vertragswelle), SA6 (Schema 7 ist unveröffentlicht; der Dateikopf wird präzisiert: „ab dem Merge nach `main`“), SOLL-1 (bleibt, schadet nicht; das Glossar „Massenbefehl“ nennt den Fall). **Bericht/später:** SA12, SA13 (große Dateien teilen), SB9, SB10, SB12, PA4, SOLL-3, Druckprofil- und Datumswahl der neuen Berichte.
 Reason: Wie D-47/D-69: Pflicht ist, was eine Regel, eine ADR, den Vertrag oder das Ticket verletzt oder Nutzer falsch informiert; Gerüche nur, wo sie schon zu Abweichungen geführt haben (SA2/SA8, SA9) oder billig sind.
 Reversible: yes  Touches: viele Pakete und Ordner, Tickets 152, 159, 161
+
+## D-105 Vierter Halt am Nutzungslimit
+Welle 7 · Ticket 152, 158, 159a, 159b, 161, 162 · decided by: orchestrator
+Question: Alle sechs laufenden Agenten hielten am 5-Stunden-Limit (Rücksetzung 13:40 UTC). Zählt das für den Circuit Breaker, und wie geht es weiter?
+Decision: Kein Fehlschlag der Umsetzung (wie D-81, D-85, D-91). Nach der Rücksetzung wurden alle sechs aus ihrem gespeicherten Stand fortgesetzt; kein neuer Agent, höchstens acht zugleich.
+Reason: Die Agenten haben früh committet; der Stand in den Worktrees ist vollständig.
+Reversible: ja
+Touches: Ablauf der Welle
+
+## D-106 Merge 152 und 162
+Welle 7 · Ticket 152, 162 · decided by: orchestrator
+Question: 152 (Aufmaß, Rechnung, Zahlungen, Zahlungsfreigabe-PDF) und 162 (Fokus nach Löschen eines Druckprofils) sind done-by-agent. Mergen, und was folgt?
+Decision: Beide gemergt (`7be550f`, `e63b4db`), ohne Konflikt; Lint und Typcheck grün. 158 nimmt die fixme-Schritte für 152 heraus. 159b bekommt `ausgabe/`, `abrechnung/`, `rechnung/` frei und zieht `PdfMitVorschau` samt der drei neuen Druckarten aus 152 nach `ui/`. Der Befund D-162.3 (eine Meldung fängt Escape einer offenen Auswahlliste) geht als kleiner Punkt an 159a (`ui-basis/Toast.tsx`), sonst in den Bericht. Die Budgettests, die unter Last rot waren (`kern`, `speicher`, `vergabe`, `abrechnung/leistung`), werden am Ende auf ruhiger Maschine gemessen; nicht gelockert.
+Reason: Wie D-79 ff.: grün und im Umfang; der zweite Review-Durchgang über 152/161/162 folgt nach dem Merge von 161 (D-103).
+Reversible: yes  Touches: abrechnung/, rechnung/, ausgabe/, Tickets 158, 159
+
+## D-107 Merge 161
+Welle 7 · Ticket 161 · decided by: orchestrator
+Question: 161 (Projekt samt Inhalt löschen in `kern`/`speicher`/App, MUST-1 aus dem Review, Einstellungen der Datei über den Kern-Ausführer) ist done-by-agent. Mergen?
+Decision: Gemergt (`d5e0680`), ohne Konflikt; Lint und Typcheck grün. 158 nimmt den letzten fixme-Schritt (Löschen samt Inhalt, Undo, Wiederholen) heraus und fährt das Tor dreimal. Die offene Frage aus D-161.2 (nach Löschen → Undo → Wiederholen → Undo fehlt der erste `Rueckgaengig`-Eintrag, weil er zum gelöschten Protokoll gehörte) geht an den zweiten Review-Durchgang (D-103) und wird dort bestätigt oder als Befund behandelt.
+Reason: Grün und im Umfang; der Tor-Schritt „Projekt löschen“ hängt an diesem Ticket (D-96).
+Reversible: yes  Touches: kern, speicher, projekt/, historie/, Ticket 158
+
+## D-108 M4 (Ticket 157) wird gekürzt
+Welle 7 · Ticket 157 · decided by: orchestrator
+Question: 157 (weitere REB-Formeln, Priorität K) darf erst nach allen P-/S-Tickets und grünem Tor starten (D-75). Jetzt starten oder nach §4 kürzen?
+Decision: Gekürzt, als erster Punkt der Kürzungsreihenfolge (`umfang-welle-7.md` §4: „M4 → …“). Das Ticket bleibt `ready-for-agent` mit Vermerk und geht in die nächste Welle; die vorhandene Formelauswahl und der X31-Rundweg (Nummer bleibt erhalten, Befund „Formel nicht umgesetzt“) bleiben unverändert.
+Reason: Die Welle ist übergelaufen: vier Halte am Nutzungslimit (D-81, D-85, D-91, D-105), das Tor ist noch nicht dreimal grün, die Leistungsbudgets müssen noch auf ruhiger Maschine gemessen werden, und 157 würde `packages/gaeb` zugleich mit 159a schreiben (P2). Das verbleibende Budget gehört dem Tor, der Review-Behebung und dem Abschluss. Kein P- oder S-Teil wird gekürzt.
+Reversible: yes (Ticket unverändert startbereit)  Touches: Ticket 157, Bericht

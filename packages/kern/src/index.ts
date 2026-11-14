@@ -37,6 +37,9 @@ export {
   projektBefehlAusfuehren,
   projektChangeSetAnwenden,
   projektChangeSetUmkehren,
+  // Vertrag v1.7c (Ticket 161, D-96): Projekt samt Inhalt löschen und seine Umkehrung.
+  projektSamtInhaltLoeschenAusfuehren,
+  projektbestandChangeSetUmkehren,
 } from './projekt-befehle';
 // Vertrag v1.7a (Ticket 137): Form und Normalform der Bieterangaben für die Bieterbefehle der Vergabe (D-127.4, D-82 S9).
 export { bieterMitAngaben, bieterangabenFehler, bieterangabenNormalisieren } from './angaben';
