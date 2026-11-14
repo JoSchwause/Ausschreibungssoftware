@@ -1,6 +1,6 @@
 # 143: `abrechnung`: Vertragsstrafe, Skonto, Bauabzugsteuer, Zahlungen; Fixture und Kettentest
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: A5 · Paket/Ordner: `packages/abrechnung`, `packages/speicher` (nur Rechnungsdekoder, D-93), `fixtures/` (neue Datei `typisch-zahlungen.json` o. ä.)
 Blocked by: 128
