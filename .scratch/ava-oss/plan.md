@@ -255,3 +255,11 @@ Stand 2026-11-09:
     Stammdaten, REB-Formeln). Zurückgeschrieben: Strang E, A5, M4, G4 in §2, Welle 7 in §3, Tor E in §4, Regel L4 und P5 in
     `docs/regeln.md`, `welle-status.md`, `AGENTS.md`. ⏳ **Offen:** Ticket 125 (Testdateien vom Nutzer, vor Welle 7), danach
     `/implement-welle 7`; Ticket 126 (GitHub Pages einschalten, Handprüfungen, Sitzung mit dem Büro); G-57.
+16. ✅ **Lauf „Welle 7“ im Demo-Modus (2026-11-13/14)** auf dem lokalen Branch `integration/welle-7` (ab `4eefd7d`, D-76):
+    E1–E17 und A5 aus `umfang-welle-7.md`, Tickets 127–163 (123/124 darin aufgegangen), `vertrag` v1.7a, v1.7b (A5) und v1.7c
+    (Projekt samt Inhalt löschen), Projektdatei Schema 7, GAEB DA XML 3.1, GAEB 90 und GAEB 2000 lesen, Abzüge und Zahlungen.
+    **Tor E „Einführungsreife“ erreicht** (Definition in §4). M4 nach §4 gekürzt (Ticket 157, D-108), dazu die Kann-Teile von E16
+    (D-99). Entscheidungen D-71 bis D-111 in `entscheidungen-auto.md`, Annahme zu G-27 (A5) in `grilling.md`. Nicht gepusht.
+    ⏳ **Offen:** Prüfung durch den Nutzer (Entscheidungslog, `vertrag` v1.7, Merge nach `main`), Ticket 125 (echte Dateien,
+    GAEB 90/2000 nur gegen eigene Fixtures geprüft), Ticket 126 (Pages, Handprüfungen, Sitzung mit dem Büro), Ticket 157, G-57.
+    Bericht: `.scratch/ava-oss/welle-7-bericht.md`.
