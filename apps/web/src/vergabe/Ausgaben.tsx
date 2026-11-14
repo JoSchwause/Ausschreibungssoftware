@@ -51,7 +51,7 @@ function useBuero(): Buero | null {
  * Dialog „PDF mit Vorschau“: Datum (und was der Aufrufer dazugibt), „Vorschau erzeugen“ zeigt das PDF im Dialog,
  * „Herunterladen“ speichert genau diese Bytes. Ändert sich eine Eingabe (`schluessel`), gilt die Vorschau nicht mehr.
  */
-function PdfMitVorschau({
+export function PdfMitVorschau({
   knopf,
   titel,
   dateiname,
