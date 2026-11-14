@@ -1,6 +1,6 @@
 # 145: GAEB 2000 lesen (.p81/.p83/.p84/.p86)
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: G4, E6 · Paket/Ordner: `packages/gaeb`, `fixtures/gaeb-formate/`
 Blocked by: 144
@@ -17,10 +17,10 @@ Testdateien .p83/.p86 desselben LV in `fixtures/gaeb-formate/`, Formatvergleich 
 
 ## Acceptance criteria
 
-- [ ] Leser mit Tests oder begründete Kürzung; Formatvergleich grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Leser mit Tests oder begründete Kürzung; Formatvergleich grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -109,3 +109,21 @@ Inhalt; Q3 meldet eine Bereichs-OZ, die nicht zur Tiefe passt, Q5 zwei Werte ohn
 8. Bedeutung der Zählung `n|m` hinter `#end[GAEB]` (Q2: Objekte und Elemente; in Q3 passt das nur ohne den eigenen Block) – nicht
    geprüft. „GAEB 2000 XML“ 2.0/2.1 (Q1 4.2) – Aufbau unbekannt, nicht gesondert behandelt.
 9. Zeichensatz „Unicode“ (Q2): als UTF-16 mit BOM oder UTF-8 angenommen; UTF-16 ohne BOM wird nicht erkannt.
+
+### Offen für den Orchestrator
+
+- `GLOSSARY.md` hat einen Eintrag GAEB 90 (D-92), aber keinen zu GAEB 2000 (Schlüsselwortformat, Endung `.p8x`); liegt außerhalb
+  dieses Tickets.
+- `apps/web/src/gaeb/gaeb.ts:60` sagt im Kommentar noch, GAEB 90 und GAEB 2000 ergäben keinen Inhalt (Rest für 159). Der
+  Dateidialog bietet `.p8x` schon an; die neuen Befundcodes haben Kurztexte in `BEFUNDTEXTE`, die App braucht nichts Eigenes.
+- Ein E2E-Ablauf „GAEB 2000 einlesen“ fehlt (App-Ordner, nicht Teil dieses Tickets).
+
+### Ergebnis
+
+- `pnpm lint` grün, `pnpm typecheck` grün, `node --test fixtures/*.test.mjs` 53/53 grün.
+- `pnpm test` (Vitest): 4.531 grün, 10 rot – alles Leistungsbudgets unter Last (Lastmittel 25 bis 39 auf 4 Kernen): `gaeb/lesen`
+  „2 MB unter 1 s“ (allein grün; XML-Weg unverändert), `kern` (3), `speicher` (3), `vergabe` (2), `apps/web/abrechnung`. Pakete
+  außer `gaeb` nicht berührt; kein Budget gelockert.
+- GAEB-Tests: `gaeb2000.test.ts` 26 (je Schlüsselwort, Texte, Aufbau, Zeichensatz, `.p84`), `formatvergleich.test.ts` 11 (Kettentest
+  mit `.p83`/`.p86` und `.p84`), `abweisung.test.ts` angepasst, `gaeb90.test.ts` 30 unverändert grün.
+- E2E `e2e/gaeb.spec.ts` 8/8 grün.
