@@ -362,6 +362,27 @@ export function schreibeAggregateDerDatei(db: Datenbank, d: Projektdatei, projek
   for (const art of AGGREGATART_NAMEN) AGGREGATARTEN[art].ausDatei(db, d, projektId);
 }
 
+/**
+ * Die Kennungen einer geprüften Projektdatei, die der Speicher schon hält, als „Art Kennung“ (Projekt, Aggregate, LV-Stände,
+ * Protokolleinträge). Das Undo von „Projekt samt Inhalt löschen“ (D-160.6) schreibt nur, wenn keine davon besteht (`konflikt`).
+ */
+export function vorhandeneKennungen(db: Datenbank, d: Projektdatei): string[] {
+  const da: string[] = [];
+  const pruefe = (tabelle: string, bezeichnung: string, id: string): void => {
+    // Tabelle und Bezeichnung sind Konstanten aus `AGGREGATARTEN`, keine Eingaben.
+    if (db.zeilen(`SELECT 1 AS da FROM ${tabelle} WHERE id = ?`, [id]).length > 0)
+      da.push(`${bezeichnung} ${id}`);
+  };
+  for (const art of AGGREGATART_NAMEN) {
+    const a = AGGREGATARTEN[art] as unknown as Aggregatart<Art>;
+    for (const [quelle, id] of a.kennungen(d))
+      if (quelle === 'lvStand') pruefe('lv_stand', 'LV-Stand', id);
+      else pruefe(a.tabelle, a.bezeichnung, id);
+  }
+  for (const e of d.protokoll) pruefe('protokoll', 'Protokolleintrag', e.id);
+  return da;
+}
+
 /** Alle Arten außer dem Projekt hängen an einem Projekt; sie verhindern sein Löschen (v1.1a, kein Kaskadieren). */
 function abhaengigeDesProjekts(): readonly AbhaengigeTabelle[] {
   return AGGREGATART_NAMEN.filter((a) => a !== 'projekt').map((a) => AGGREGATARTEN[a]);
