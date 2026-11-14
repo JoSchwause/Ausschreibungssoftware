@@ -112,3 +112,67 @@
 .kalkulation__ep {
   font-weight: var(--tx-weight-medium);
 }
+
+/* Ticket 154: Vorschau der Kostenberichte im Dialog (dieselben Zeilen wie PDF und Excel). */
+.kosten__vorschau {
+  max-height: 55vh;
+  overflow: auto;
+  border: 1px solid var(--tx-color-border);
+  padding: var(--tx-space-3);
+}
+
+.kosten__vorschau h3 {
+  margin: 0 0 var(--tx-space-2);
+}
+
+.kosten__vorschau-absender {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0;
+}
+
+.kosten__vorschau-kopf {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0 var(--tx-space-3);
+  margin: 0 0 var(--tx-space-2);
+}
+
+.kosten__vorschau-kopf > div {
+  display: contents;
+}
+
+.kosten__vorschau-kopf dt {
+  color: var(--tx-color-text-muted);
+}
+
+.kosten__vorschau-kopf dd {
+  margin: 0;
+}
+
+.kosten__vorschau-klein {
+  color: var(--tx-color-text-muted);
+  font-size: var(--tx-font-size-sm);
+}
+
+.kosten__vorschau-tabelle {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.kosten__vorschau-tabelle th,
+.kosten__vorschau-tabelle td {
+  border-bottom: 1px solid var(--tx-color-border);
+  padding: 2px var(--tx-space-2);
+  text-align: left;
+}
+
+.kosten__vorschau-tabelle .kosten__rechts {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.kosten__vorschau-fett {
+  font-weight: 600;
+}

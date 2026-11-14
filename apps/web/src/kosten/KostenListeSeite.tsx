@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Seite `/projekt/<id>/kosten` (Ticket 89, C3): die Kostenermittlungen des Projekts, anlegen, öffnen. Jede Änderung ist ein
-// Befehl durch `kosten` und Speicher (A5); die Summe je Kostenermittlung rechnet `kosten` (N1).
+// Befehl durch `kosten` und Speicher (A5); die Summe je Kostenermittlung rechnet `kosten` (N1). Ticket 154: Bezeichnungen der
+// Kostengruppen hier einlesen, mit Hinweis, solange keine da sind (B-14); Werkzeugleiste aus `ui-basis` (D-89).
 
 import { formatiereBetragDe } from '@tethys/dezimal';
 import { kostenermittlungBerechnen } from '@tethys/kosten';
-import { Auswahl, Button, Eingabefeld } from '@tethys/ui-basis';
+import { Auswahl, Button, Eingabefeld, Werkzeugleiste, Werkzeugverweis } from '@tethys/ui-basis';
 import type { KostenermittlungZustand, Kostenermittlungsstufe, Projekt, ProjektId } from '@tethys/vertrag';
 import { useEffect, useState } from 'react';
 import type { ReactElement, SyntheticEvent } from 'react';
@@ -13,9 +14,11 @@ import { befehlswegFuer } from '../lv/befehlsweg';
 import { useMeldungen } from '../lv/meldungen';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { kostenermittlungAnlegenBefehl } from './befehle';
-import { kontrollePfad, kostenermittlungPfad } from './pfad';
+import { BezeichnungenBereich, BezeichnungenHinweis, useBezeichnungen } from './Bezeichnungen';
+import { bezeichnungenPfad, kontrollePfad, kostenermittlungPfad } from './pfad';
 import { kostenermittlungSitzung, kostenermittlungenLaden } from './schreiben';
 import { STUFEN, texte } from './texte';
+import { hrefFuer } from '../ui/route';
 import { Verweis } from '../ui/Verweis';
 import { modellePfad } from '../bim/pfad'; // Ticket 122
 import '../lv/lv.css';
@@ -40,6 +43,7 @@ export function KostenListeSeite({
   const [name, setName] = useState('');
   const [stufe, setStufe] = useState<Kostenermittlungsstufe>('kostenberechnung');
   const [nameFehlt, setNameFehlt] = useState(false);
+  const bezeichnungsstand = useBezeichnungen();
 
   useEffect(() => {
     let aktiv = true;
@@ -100,24 +104,29 @@ export function KostenListeSeite({
         <h1>{texte.seite.titel(projekt.name)}</h1>
         <Verweis pfad={`/projekt/${projekt.id}`} text={texte.seite.zumProjekt} gehe={gehe} />
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.seite.werkzeuge}>
+      <Werkzeugleiste beschriftung={texte.seite.werkzeuge}>
         <HistorieKnoepfe />
-        <Verweis
-          pfad={kontrollePfad(projekt.id)}
-          text={texte.seite.zurKontrolle}
-          gehe={gehe}
-          className="tx-button tx-button--schlicht"
-        />
+        <Werkzeugverweis
+          href={hrefFuer(kontrollePfad(projekt.id))}
+          onFolgen={() => {
+            gehe(kontrollePfad(projekt.id));
+          }}
+        >
+          {texte.seite.zurKontrolle}
+        </Werkzeugverweis>
         {/* Ticket 122 (PC-a5): Verweis auf die Kennwerte der Modellseite (Ticket 115, nur Verweis) */}
         <span title={texte.seite.zuDenKennwertenTitel}>
-          <Verweis
-            pfad={modellePfad(projekt.id)}
-            text={texte.seite.zuDenKennwerten}
-            gehe={gehe}
-            className="tx-button tx-button--schlicht"
-          />
+          <Werkzeugverweis
+            href={hrefFuer(modellePfad(projekt.id))}
+            onFolgen={() => {
+              gehe(modellePfad(projekt.id));
+            }}
+          >
+            {texte.seite.zuDenKennwerten}
+          </Werkzeugverweis>
         </span>
-      </div>
+      </Werkzeugleiste>
+      <BezeichnungenHinweis stand={bezeichnungsstand} pfad={bezeichnungenPfad(projekt.id)} gehe={gehe} />
       {ermittlungen.length === 0 ? (
         <p>{texte.seite.leer}</p>
       ) : (
@@ -160,6 +169,7 @@ export function KostenListeSeite({
           {texte.seite.anlegen}
         </Button>
       </form>
+      <BezeichnungenBereich stand={bezeichnungsstand} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Rechnungsprüfung (Ticket 81, D-34 Schritt 4 bis 7, D-44): die Abzugskette einer Rechnung, jeder Schritt auf 2 Stellen
-// gerundet und dann verrechnet (N2, N5, E-07), frühere Zahlbeträge eingefroren.
+// gerundet und dann verrechnet (N2, N5, E-07), frühere Zahlbeträge eingefroren. Ticket 143 (D-72): die Vertragsstrafe
+// zwischen Umlagen und Einbehalt, danach der Zahlungsstand (Skonto, Bauabzugsteuer, Auszahlung, Zahlungen, offen).
 
 import {
   NULL_BETRAG,
@@ -20,9 +21,12 @@ import type {
   Prozent,
   Rechnung,
   RechnungId,
+  Zahlungsbefund,
+  Zahlungsstand,
 } from '@tethys/vertrag';
 import { leistungsstandBerechnen } from './leistungsstand';
 import type { Leistungsbefund } from './leistungsstand';
+import { zahlungsstandBerechnen } from './zahlungsstand';
 
 /** Eine Umlage der Rechnung mit ihrem Betrag round(Brutto kumuliert × Satz / 100, 2) (D-34 (5)). */
 export interface Umlagebetrag {
@@ -43,10 +47,13 @@ export interface FruehereZahlung {
  * - `leistung`, `nachlass`, `nettoNachNachlass`: aus dem Leistungsstand (Schritt 1 bis 3).
  * - `mwst` = round(Netto n. N. × MwSt-Satz des Auftrags-LV / 100, 2); `bruttoKumuliert` = Netto n. N. + MwSt (Schritt 4).
  * - `umlagen`: je Umlage der Rechnung, alle auf `bruttoKumuliert` (Schritt 5).
+ * - `vertragsstrafe`: `Rechnung.vertragsstrafe.betrag` (brutto, kumuliert), 0,00 ohne (D-72, D-128.3); ohne MwSt-Wirkung,
+ *   die Basis von Umlagen und Einbehalt bleibt `bruttoKumuliert`.
  * - `einbehalt`: Abschlag: Sicherheitseinbehalt, Schluss: Gewährleistungseinbehalt, round(Brutto kum. × Satz / 100, 2);
  *   Satz `null`: 0,00 (Schritt 6).
  * - `fruehereZahlbetraege` = Σ der eingefrorenen Zahlbeträge der früheren freigegebenen Rechnungen (`fruehere`).
- * - `zahlbetrag` = Brutto kum. − Σ Umlagen − Einbehalt − frühere Zahlbeträge; negativ ist Überzahlung (Schritt 7).
+ * - `zahlbetrag` = Brutto kum. − Σ Umlagen − Vertragsstrafe − Einbehalt − frühere Zahlbeträge; negativ ist Überzahlung
+ *   (Schritt 7).
  */
 export interface Abzugskette {
   readonly leistung: Betrag;
@@ -55,6 +62,7 @@ export interface Abzugskette {
   readonly mwst: Betrag;
   readonly bruttoKumuliert: Betrag;
   readonly umlagen: readonly Umlagebetrag[];
+  readonly vertragsstrafe: Betrag;
   readonly einbehalt: {
     readonly art: 'sicherheit' | 'gewaehrleistung';
     readonly satz: Prozent | null;
@@ -89,8 +97,9 @@ export interface Forderungsvergleich {
 /**
  * Ein Befund der Rechnungsprüfung (U5: keine Sperre), dazu die Befunde des Leistungsstands. Reihenfolge: Blätter
  * (`aufmass-unbekannt`, `aufmass-fehlt`), frühere Rechnungen (`fruehere-nicht-freigegeben`, `freigabe-reihenfolge`),
- * Leistungsstand, `schlussrechnung-nicht-letzte`, `gefordert-abweichend`, `ueberzahlung`, `freigabe-abweichend`; innerhalb
- * eines Codes nach Rechnungsnummer bzw. in der Reihenfolge der Kennungen.
+ * Leistungsstand, `schlussrechnung-nicht-letzte`, `gefordert-abweichend`, `ueberzahlung`, `freigabe-abweichend`, dann die
+ * Befunde des Zahlungsstands (`skonto-ohne-eingang`, `zahlungen-ueber-auszahlung`; v1.7b, D-128.8); innerhalb eines Codes
+ * nach Rechnungsnummer bzw. in der Reihenfolge der Kennungen.
  * - `aufmass-unbekannt`: Eine Kennung aus `aufmassIds` hat kein Blatt in `aufmasse`; sie zählt nichts.
  * - `aufmass-fehlt`: Ein Blatt einer früheren Rechnung fehlt in `aufmassIds` (kumuliert, D-34 (1)).
  * - `fruehere-nicht-freigegeben`: Eine frühere Rechnung ist nicht freigegeben; ihr Zahlbetrag fehlt in der Kette.
@@ -104,6 +113,7 @@ export interface Forderungsvergleich {
  */
 export type Rechnungsbefund =
   | Leistungsbefund
+  | Zahlungsbefund
   | { readonly code: 'aufmass-unbekannt'; readonly aufmassId: AufmassId }
   | {
       readonly code: 'aufmass-fehlt';
@@ -143,6 +153,11 @@ export interface Rechnungspruefung {
   readonly kette: Abzugskette;
   /** `null`: Die Rechnung nennt keine Forderung (`gefordert: null`). */
   readonly forderung: Forderungsvergleich | null;
+  /**
+   * Skonto, Bauabzugsteuer, Auszahlung, Zahlungen und offener Betrag (v1.7b, D-72, D-128.8): vom eingefrorenen Zahlbetrag aus,
+   * sobald die Rechnung freigegeben ist, sonst vom geprüften `kette.zahlbetrag` (Vorschau).
+   */
+  readonly zahlungsstand: Zahlungsstand;
   readonly befunde: readonly Rechnungsbefund[];
 }
 
@@ -239,9 +254,16 @@ export function rechnungPruefen(
           satz: rechnung.sicherheitSatz,
           betrag: anteil(bruttoKumuliert, rechnung.sicherheitSatz),
         };
+  // (5a) Vertragsstrafe nach den Umlagen, vor dem Einbehalt (D-72): ein fester Bruttobetrag.
+  const vertragsstrafe = rechnung.vertragsstrafe?.betrag ?? NULL_BETRAG;
   // (7) Zahlbetrag nach Abzug der eingefrorenen früheren Zahlbeträge.
   const fruehereZahlbetraege = summiereBetraege(fruehere.map((f) => f.zahlbetrag));
-  const abzuege = summiereBetraege([...umlagen.map((u) => u.betrag), einbehalt.betrag, fruehereZahlbetraege]);
+  const abzuege = summiereBetraege([
+    ...umlagen.map((u) => u.betrag),
+    vertragsstrafe,
+    einbehalt.betrag,
+    fruehereZahlbetraege,
+  ]);
   const zahlbetrag = subtrahiere(bruttoKumuliert, abzuege);
   const kette: Abzugskette = {
     leistung: leistungsstand.leistung,
@@ -250,6 +272,7 @@ export function rechnungPruefen(
     mwst,
     bruttoKumuliert,
     umlagen,
+    vertragsstrafe,
     einbehalt,
     fruehere,
     fruehereZahlbetraege,
@@ -284,8 +307,18 @@ export function rechnungPruefen(
       geprueft: zahlbetrag,
       differenz: subtrahiere(eingefroren, zahlbetrag),
     });
+  // Nach dem Zahlbetrag (D-72): vom eingefrorenen aus, sobald freigegeben.
+  const stand = zahlungsstandBerechnen(rechnung, eingefroren ?? zahlbetrag);
+  befunde.push(...stand.befunde);
 
-  return { rechnungId: rechnung.id, leistungsstand, kette, forderung, befunde };
+  return {
+    rechnungId: rechnung.id,
+    leistungsstand,
+    kette,
+    forderung,
+    zahlungsstand: stand.zahlungsstand,
+    befunde,
+  };
 }
 
 /** Warum eine Rechnung nicht freigegeben werden kann (D-34 (7), D-70.4). */
