@@ -6,14 +6,15 @@
 import { Button, Werkzeugleiste } from '@tethys/ui-basis';
 import { LvGrid } from '@tethys/ui-grid';
 import type { LeistungsverzeichnisId, LvStand, LvStandId } from '@tethys/vertrag';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { HistorieKnoepfe } from '../historie/HistorieAnbieter';
 import { standAlsNeuesLv } from '../historie/staende'; // Ticket 150 (D-82 S6)
 import { texte } from '../historie/texte';
 import { useUmgebung } from '../speicher/SpeicherAnbieter';
 import { hrefFuer } from '../ui/route';
-import { lvAnsichtBauen } from './ansicht';
+import { alleZeilenBauen, lvAnsichtBauen } from './ansicht';
+import { hilfePfad } from '../hilfe/pfad'; // Ticket 156
 import { befehlswegFuer } from './befehlsweg';
 import { useMeldungen } from './meldungen';
 import { zeitpunktDe } from './StaendeDialog';
@@ -74,6 +75,7 @@ function StandAnsicht({ stand, gehe }: { stand: LvStand; gehe: (pfad: string) =>
   const { pruefe } = useMeldungen();
   const [zugeklappt, setZugeklappt] = useState<ReadonlySet<string>>(new Set());
   const ansicht = useMemo(() => lvAnsichtBauen(stand.zustand, zugeklappt, new Map()), [stand, zugeklappt]);
+  const alleZeilen = useCallback(() => alleZeilenBauen(stand.zustand, zugeklappt), [stand, zugeklappt]); // Ticket 156
   const lv = stand.zustand.leistungsverzeichnis;
   const lvPfad = `/lv/${lv.id}`;
 
@@ -119,6 +121,10 @@ function StandAnsicht({ stand, gehe }: { stand: LvStand; gehe: (pfad: string) =>
             spaltenbreitenSchluessel="lv-stand"
             ozMaske={lv.ozMaske}
             schreibgeschuetzt
+            alleZeilen={alleZeilen}
+            onKuerzelhilfe={() => {
+              gehe(hilfePfad('tastenkuerzel'));
+            }}
             onAufklappen={(knotenId, auf) => {
               setZugeklappt((alt) => {
                 const neu = new Set(alt);
