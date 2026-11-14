@@ -1,6 +1,6 @@
 # 158: Tor E „Einführungsreife“
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: – · Paket/Ordner: `apps/web/e2e/umsteiger.spec.ts`, `apps/web/e2e/ueberlauf.spec.ts`, Kettentests
 Blocked by: alle P-Tickets und die nicht gekürzten S-Tickets
