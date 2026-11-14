@@ -1,6 +1,6 @@
 # 160: `vertrag` v1.7c: Projekt samt Inhalt löschen
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: F, E8 · Paket/Ordner: `packages/vertrag`, `GLOSSARY.md` (mechanische Folgezeilen nur, wo der Typcheck sie erzwingt)
 Blocked by: – (nach 128)
