@@ -144,6 +144,9 @@ export function aggregatVon(cs: ChangeSet): Protokolleintrag['aggregat'] {
   switch (cs.art) {
     case 'projekt':
       return { art: cs.art, id: cs.projektId };
+    // Vertrag v1.7c (Ticket 160, D-96): kein Aggregat; im Protokoll mit dem Projekt.
+    case 'projektbestand':
+      return { art: 'projekt', id: cs.projektId };
     case 'leistungsverzeichnis':
       return { art: cs.art, id: cs.leistungsverzeichnisId };
     case 'angebot':

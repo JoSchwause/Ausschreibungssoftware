@@ -828,3 +828,83 @@
 .tx-grid__balkenrand--ende {
   right: 0;
 }
+
+/* ---------- Suchen und filtern, Kontextmenü (Ticket 156) ---------- */
+
+/* Über dem Scrollbereich, nur bei offener Suche oder aktivem Filter: Sonst nimmt die Leiste keinen Platz (15 Zeilen bei
+   1280 × 800 bleiben). */
+.tx-grid > .tx-grid__suche {
+  flex: none;
+}
+
+.tx-grid__suche {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tx-space-2);
+  padding: var(--tx-space-2) var(--tx-space-3);
+  border-bottom: 1px solid var(--tx-color-border);
+  background: var(--tx-color-surface-raised);
+  font-size: var(--tx-font-size-sm);
+}
+
+.tx-grid__suchfeld {
+  width: 16rem;
+  height: var(--tx-control-height-sm);
+  padding: 0 var(--tx-space-2);
+  border: 1px solid var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-sm);
+  background: var(--tx-color-surface);
+  color: var(--tx-color-text);
+  font: inherit;
+}
+
+.tx-grid__suchfeld:focus-visible,
+.tx-grid__filterwahl select:focus-visible,
+.tx-grid__filterwahl input:focus-visible {
+  outline: var(--tx-focus-ring);
+  outline-offset: 1px;
+}
+
+.tx-grid__suchstand {
+  min-width: 6rem;
+  color: var(--tx-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-grid__filterwahl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tx-space-1);
+}
+
+.tx-grid__filterwahl select {
+  height: var(--tx-control-height-sm);
+  border: 1px solid var(--tx-color-border-strong);
+  border-radius: var(--tx-radius-sm);
+  background: var(--tx-color-surface);
+  color: var(--tx-color-text);
+  font: inherit;
+}
+
+.tx-grid__filterstand {
+  font-weight: 600;
+}
+
+.tx-grid__suche-zu {
+  margin-left: auto;
+}
+
+/* Unsichtbarer Punkt, an dem das Kontextmenü aufgeht (Mauszeiger oder aktive Zelle). */
+.tx-grid__menueanker {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.tx-grid__menuetrenner {
+  height: 1px;
+  margin: var(--tx-space-1) 0;
+  background: var(--tx-color-border);
+}

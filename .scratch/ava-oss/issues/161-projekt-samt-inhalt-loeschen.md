@@ -15,7 +15,7 @@ Herkunft: Tor E (158), E8, D-96
 2. **Speicher:** Löschen aller Aggregate des Projekts in einer Transaktion; Undo über den Schreibweg von `projektdateiEinlesen`
    (gleiche IDs, kein Kopie-Modus, Protokoll zurück); Modell-Bytes erst freigeben, wenn kein Undo-Schritt sie nennt.
    **Pflichttest (Eigenschaft):** Beispielprojekt (alle Aggregatarten inkl. Stände, Modelle, Rechnungen mit Zahlungen) →
-   löschen → Undo → Projektdatei-Export byte-gleich.
+   löschen → Undo → Projektdatei-Export byte-gleich bis auf genau den letzten Protokolleintrag `Rueckgaengig` (D-102; der Test prüft ihn und entfernt ihn vor dem Vergleich).
 3. **App:** Menü „Weitere Aktionen“ → „Projekt löschen“ bietet bei Inhalt „Projekt samt Inhalt löschen …“: Dialog nennt die
    Anzahl je Art, verweist zuerst auf „Projektdatei sichern“ (Schaltfläche im Dialog), verlangt eine ausdrückliche
    Bestätigung; danach Projektliste, Rückgängig stellt alles her. E2E dazu.

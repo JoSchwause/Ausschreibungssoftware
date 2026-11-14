@@ -22,6 +22,8 @@ declare global {
       aktiveZeilen: (KnotenId | null)[];
       /** Aufrufe von `onZeileOeffnen` (nur mit `oeffnen=1`). */
       geoeffnet: { knotenId: KnotenId; spalte: LvSpalte }[];
+      /** Aufrufe von `onKuerzelhilfe` (nur mit `hilfe=1`). */
+      kuerzelhilfe: number;
     };
   }
 }

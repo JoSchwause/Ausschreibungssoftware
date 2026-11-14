@@ -133,6 +133,13 @@ export type Massenbefehlskopf =
       readonly art: 'BauwerksmodellAnlegen';
       /** Das Bauwerksmodell ohne `struktur` und `bauteile` (v1.6, Ticket 97 Punkt 1, D-54). */
       readonly bauwerksmodell: BauwerksmodellKopf;
+    }
+  | {
+      /**
+       * v1.7c (Ticket 160, D-96): der ganze Befehl. Seine lange Liste, der `Projektbestand`, steckt nicht im Befehl, sondern im
+       * ChangeSet (`ProjektbestandChangeSet`).
+       */
+      readonly art: 'ProjektSamtInhaltLoeschen';
     };
 
 /**
@@ -567,6 +574,9 @@ export interface Persistenzstatus {
  * - einen Bautagebucheintrag schreibt, dessen Datum im Projekt schon ein anderer trägt.
  * Schwache Verweise prüft `speicher` nicht (Befunde der App): Vorgangsbezug auf ein LV und seine Knoten, `Mangel.positionId`,
  * Bauteilzuordnungen gegen ein Modell.
+ *
+ * v1.7c (Ticket 160, D-96): dazu `ProjektbestandChangeSet` (Projekt samt Inhalt löschen und dessen Undo, je in einer
+ * Transaktion; Formen, `konflikt` und `unbekannt` siehe dort). Bis Ticket 161 `unbekannt`.
  */
 export interface Speicher {
   readonly projekte: ProjektRepository;
@@ -710,3 +720,30 @@ export interface Projektdatei {
    */
   readonly einstellungen?: Einstellungen;
 }
+
+/**
+ * Projektbestand (v1.7c, Ticket 160; E8, D-96; Glossar „Projektbestand“): alles, was `speicher` zu einem Projekt hält, außer dem
+ * Projekt selbst, in der Form der Projektdatei (Schema 7). Steht im ChangeSet von `ProjektSamtInhaltLoeschen`
+ * (`ProjektbestandChangeSet.bestand`), damit das Undo alles mit denselben Kennungen zurücklegt. Ein abgeleiteter Typ: Was die
+ * Projektdatei künftig dazubekommt, gehört ohne Vertragsänderung auch zum Bestand.
+ *
+ * Geprüft gegen Schema 7 (D-96): Die Projektdatei trägt alle Aggregate des Projekts (LV samt Papierkorb, Angebote, Auftrags-LVs,
+ * Aufmaßblätter, Rechnungen samt Zahlungen, Kostenermittlungen, Bauwerksmodelle, Bauzeitenpläne, Honorarberechnungen, Mängel,
+ * Bautagebuch), die **LV-Stände** (`lvStaende`), das **Befehlsprotokoll** (`protokoll`) und die **Modellverweise** (je
+ * Bauwerksmodell `datei.hash`); nichts fehlt. Ausgelassen sind:
+ * - `schemaVersion`: Der Bestand ist immer in der aktuellen Form (er entsteht aus dem Speicher, nicht aus einer Datei).
+ * - `projekt`: steht daneben im ChangeSet (`ProjektbestandChangeSet.projekt`).
+ * - `modelldateien`: Die Bytes stehen nie in einem ChangeSet oder der Undo-Historie (D-51); sie bleiben in der
+ *   `Modelldateiablage`, die sie erst beim nächsten Öffnen freigibt, wenn kein Modell sie mehr nennt. Das Undo findet sie dort.
+ * - `einstellungen`: gehören dem Gerät, nicht dem Projekt (D-73); das Löschen lässt sie unberührt. Die Aggregate verweisen nicht
+ *   auf Einstellungen (Kostengruppennummern an Knoten und in Kostenermittlungen sind Werte, keine Verweise; ein Druckprofil
+ *   wird beim Drucken gewählt, nie gespeichert).
+ *
+ * Lesarten wie in der Projektdatei: Listen in der Reihenfolge des Exports (die LV-Stände nach `LvStandRepository.auflisten`,
+ * das Protokoll in der Reihenfolge des Schreibens), ein leeres optionales Feld fehlt (nie `[]`). `speicher` vergleicht den
+ * Bestand im Lösch-ChangeSet mit dem gespeicherten (wie D-31.2): Weicht er ab oder fehlt etwas, `konflikt`.
+ */
+export type Projektbestand = Omit<
+  Projektdatei,
+  'schemaVersion' | 'projekt' | 'modelldateien' | 'einstellungen'
+>;

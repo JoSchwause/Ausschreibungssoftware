@@ -135,6 +135,13 @@ describe('ProjektLoeschen', () => {
   });
 });
 
+// Vertrag v1.7c (Ticket 160, D-96): mechanische Folgezeile; den Ausführer mit Bestand liefert Ticket 161.
+describe('ProjektSamtInhaltLoeschen bis Ticket 161', () => {
+  it('befehl-nicht-zustaendig', () => {
+    expect(fehlercode(projekt(), { art: 'ProjektSamtInhaltLoeschen' })).toBe('befehl-nicht-zustaendig');
+  });
+});
+
 // --- Vertrag v1.7a (Ticket 137; E10, D-127.4, D-127.5) -------------------------------------------------------------------
 
 const ANGABEN: Projektangaben = {
