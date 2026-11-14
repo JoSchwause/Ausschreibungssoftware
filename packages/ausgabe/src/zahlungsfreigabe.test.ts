@@ -5,15 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type {
-  Betrag,
-  Kalenderdatum,
-  Prozent,
-  Rechnung,
-  RechnungId,
-  ZahlungId,
-  Zahlungsstand,
-} from '@tethys/vertrag';
+import type { Betrag, Kalenderdatum, Prozent, Rechnung, ZahlungId, Zahlungsstand } from '@tethys/vertrag';
 import { baueRechnungspruefungModell, erzeugeRechnungspruefungPdf } from './index';
 import type { BerichtBlock, BerichtZelle, RechnungspruefungEingabe } from './index';
 import { alsText, liesPdf } from './pdftext';
@@ -306,7 +298,7 @@ function ausFixture(nr: 1 | 2): RechnungspruefungEingabe {
         fruehere:
           nr === 1 || vorige.freigabe === null
             ? []
-            : [{ rechnungId: vorige.id as RechnungId, nummer: 1, zahlbetrag: vorige.freigabe.zahlbetrag }],
+            : [{ rechnungId: vorige.id, nummer: 1, zahlbetrag: vorige.freigabe.zahlbetrag }],
       },
       forderung: null,
       zahlungsstand: zs,
