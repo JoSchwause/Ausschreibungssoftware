@@ -175,7 +175,8 @@ test.describe('Kontextmenü', () => {
 
     await zelle(page, 'Bauzaun stellen', 'kurztext').click({ button: 'right' });
     await punkt(page, 'Tastenkürzel anzeigen').click();
-    expect(await page.evaluate(() => window.__harness.kuerzelhilfe)).toBe(1);
+    // Das Menü führt den Punkt erst aus, wenn es zu ist und der Fokus zurück im Grid steht (`onCloseAutoFocus`).
+    await expect.poll(() => page.evaluate(() => window.__harness.kuerzelhilfe)).toBe(1);
   });
 
   test('Umschalt+F10 und Menütaste öffnen es an der aktiven Zelle; Esc gibt den Fokus zurück', async ({
@@ -205,9 +206,9 @@ test.describe('Kontextmenü', () => {
     await page.goto('/?fixture=typisch');
     await zelle(page, 'Bauzaun stellen', 'kurztext').click({ button: 'right' });
     await punkt(page, 'Position anlegen').click();
-    expect(await page.evaluate(() => window.__harness.befehle.map((b) => b.art))).toEqual([
-      'PositionAnlegen',
-    ]);
+    await expect
+      .poll(() => page.evaluate(() => window.__harness.befehle.map((b) => b.art)))
+      .toEqual(['PositionAnlegen']);
     await zelle(page, 'Bauzaun stellen', 'kurztext').click({ button: 'right' });
     await punkt(page, 'Suchen und filtern').click();
     await expect(suchfeld(page)).toBeFocused();
