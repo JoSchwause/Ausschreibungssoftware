@@ -54,6 +54,19 @@ Herkunft: umfang §3 E12, E11 (A5-Zeilen)
   (der Bauzeitenplan hat ohnehin keinen Excel-Einstieg). Ohne berechnete Termine steht ein Satz statt des Plans.
 - **D-153.7** Kritischer Weg im PDF: **Trenner „›“ statt „→“.** Der Pfeil fehlt im Latin-Teil von Noto Sans und erschien als
   leeres Kästchen (bei der Sichtprüfung des PDF gefunden); am Bildschirm bleibt „→“.
+- **D-153.8** A5-Zeilen (Punkt 2; Bezeichnungen vom Orchestrator bestätigt): **Vertragsstrafe „Vertragsstrafe (Grund)“ als
+  Abzug zwischen Umlagen und Einbehalt, wenn die Rechnung eine trägt oder die Kette einen Betrag ≠ 0,00 nennt
+  (`kette.vertragsstrafe` optional, bis 143 sie liefert). Nach „Freigabe“ ein Abschnitt „Zahlungsfreigabe“ aus
+  `pruefung.zahlungsstand` (`Zahlungsstand` aus `vertrag`, optional; ohne ihn bleibt der Druck wie vor A5):** mit Skonto und
+  Fristende eine Tabelle beider Fälle („Bei Zahlung bis TT.MM.JJJJ“ / „Danach“: Zahlbetrag, Skonto (Satz), „Bauabzugsteuer
+  15,00 % an das Finanzamt“, „Auszahlung an den Auftragnehmer“) und derselbe Inhalt als Satz („Bei Zahlung bis …: Auszahlung
+  …, danach: …“, D-72); Skonto ohne Eingangsdatum: ein Satz statt des zweiten Falls. Dann der geltende Fall als Felder:
+  „Zahlbetrag (eingefroren)“ bzw. „(geprüft, noch nicht freigegeben)“, „Skonto (verwirklicht/nicht verwirklicht)“,
+  Bauabzugsteuer, Auszahlung, „Summe der Zahlungen“, „Offen“; die Zahlungen als Liste nach Datum, ohne Zahlung „Noch keine
+  Zahlung erfasst.“ Die Unterschriftszeilen stehen danach am Ende. Den Satz der Steuer nennt `BAUABZUGSTEUER_SATZ`.
+- **D-153.9** Seitenumbruch: **Eine Tabelle bis 8 Zeilen wird im Berichts-PDF nicht geteilt, und eine Überschrift direkt
+  davor bleibt bei ihr.** Bei der Sichtprüfung fiel die letzte Zeile der Fälle auf die nächste Seite und die Überschrift
+  blieb allein stehen; betrifft alle Berichte mit kleinen Tabellen (Inhalt gleich, nur der Umbruch).
 
 ### Zwischenstand (Branch `welle-7/153-ausgabe-kosten`)
 
