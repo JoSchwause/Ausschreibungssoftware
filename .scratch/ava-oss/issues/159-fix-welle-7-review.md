@@ -55,9 +55,12 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
   eigene Einträge, „Vorschau“ in beiden Bedeutungen (Modul nach G-60, Dokument) samt Zeile in der Tabelle der Oberfläche.
   `abrechnung`: `szenario()` → `auszahlungsszenario()`, `fall` → `geltendes`. Vertragskommentare verweisen aufs Glossar.
   Nicht hier: „Projektstand“ (`apps/web/src/projekt/`, gesperrt für 161).
-- **D-159a.8 PA2.** Beim Skonto steht „verwirklicht“, „noch nicht verwirklicht“ (keine Zahlung nach dem Fristende erfasst; die
-  Frist kann noch laufen) oder „nicht verwirklicht“ (eine Zahlung nach dem Fristende ist erfasst, die Frist ist sicher vorbei).
-  Ohne Uhr (A2) ist das die einzige sichere Unterscheidung. Test `zahlungsfreigabe.test.ts` (beide Fälle).
+- **D-159a.8 PA2.** Beim Skonto steht „verwirklicht“, „noch nicht verwirklicht“, solange die Skontofrist läuft, und „nicht
+  verwirklicht“ erst danach (Vorgabe des Orchestrators im zweiten Durchgang). Abgelaufen ist sie, wenn das Druckdatum nach dem
+  Fristende liegt oder eine Zahlung nach dem Fristende erfasst ist (ohne Uhr im Paket, A2). Die Regel steht einmal als
+  `skontoStandText` in `@tethys/ausgabe` (exportiert, damit der Bildschirm in `rechnung/` denselben Text nutzen kann; der
+  Bildschirm zeigt heute noch fest „Skonto (nicht verwirklicht)“, `rechnung/texte.ts:206`, Ordner nicht in 159a). Tests in
+  `zahlungsfreigabe.test.ts`.
 - **D-159a.9 Vertragskommentar D-104.** An `ProjektSamtInhaltLoeschen` (nur Kommentar): Präfix-Vergleich des Protokolls beim
   Löschen, angehängte Einträge erlaubt (Präzisierung von D-160.5 wegen D-160.6). Die Umsetzung liegt bei 161.
 - **D-159a.10 SB4.** Belege in `typisch-zahlungen.json` (`regel`) und im Fixture-README „A5“: § 48 Abs. 1 Satz 1 und Abs. 3
@@ -85,3 +88,6 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
   Radix gibt Escape der zuletzt geöffneten Ebene, und eine Meldung ist eine solche Ebene; eine Weiche im Escape der Meldung
   kann die Liste nicht schließen (deren Listener ist dann abgemeldet). Test `Toast.test.ts` (happy-dom, rot ohne die Änderung).
 - **D-159a.14 nicht in 159a.** SA6 (Kopf von `speicher/dateimigration7.ts`) liegt in `speicher` (gesperrt, 161).
+- **D-159a.15 R6 (zweiter Durchgang).** Beim Löschen samt Inhalt dürfen hinter dem Protokoll des Bestands nur Einträge
+  `Rueckgaengig` und `Wiederholen` stehen, sonst `konflikt` (der Bestand ist veraltet). Test in `projektbestand.test.ts`
+  (gespeichert ist ein gewöhnlicher Befehl mehr). Folge in ADR 0009 ergänzt.
