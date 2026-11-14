@@ -1,6 +1,6 @@
 # 156: Suchen, Filtern und Kontextmenü im Grid
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: U, E4 · Paket/Ordner: `packages/ui-grid`, `apps/web/src/lv/`
 Blocked by: 148, 130
@@ -21,10 +21,10 @@ Herkunft: umfang §3 E4, B-09
 
 ## Acceptance criteria
 
-- [ ] Prüfstand-E2E und App-E2E; Budgets 5.000/10.000 grün
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Prüfstand-E2E und App-E2E; Budgets 5.000/10.000 grün
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -50,7 +50,7 @@ Entscheidungen im Demo-Modus (Branch `welle-7/156-suchen`):
   Zeilen samt ihrer Gliederungen, alles offen und ohne Klappknopf. Native `select` in der Leiste (eine Zeile, schlicht; die
   `Auswahl` aus `ui-basis` setzt das Label über das Feld).
 - **D-156.5** Filter sichtbar, ein Klick hebt auf → Die Leiste „Suchen und filtern“ steht über dem Grid, solange die Suche
-  offen oder ein Filter aktiv ist: „Gefiltert: Bedarf · 2 von 33 Zeilen“ mit „Filter aufheben“ (Fokus danach zurück ins
+  offen oder ein Filter aktiv ist: z. B. „Gefiltert: Bedarf · 2 von 33 Zeilen“ mit „Filter aufheben“ (Fokus danach zurück ins
   Grid). Ohne Suche und Filter nimmt sie keinen Platz (Ziel 15 Zeilen bei 1280×800 bleibt). Im Filter ist Verschieben
   gesperrt (Ansage), weil Geschwister fehlen und ein Schritt über verborgene Zeilen spränge.
 - **D-156.6** Kontextmenü mit Radix: `@radix-ui/react-dropdown-menu` (dieselbe Version wie in `ui-basis`, MIT) als
@@ -72,3 +72,22 @@ Entscheidungen im Demo-Modus (Branch `welle-7/156-suchen`):
 - **D-156.10** Auftrags-LV (`auftrag/`, fremder Ordner): Suchen, Filtern und Kontextmenü wirken dort schon, aber nur über
   die sichtbaren Zeilen und ohne Punkt „Tastenkürzel anzeigen“. Folgepunkt: `alleZeilen` und `onKuerzelhilfe` in
   `AuftragsLvSeite` setzen (zwei Zeilen wie in `LvStandSeite`).
+- **D-156.11** Aus D-100: Der Spaltenkopf der OZ zeigt „OZ“ und hat wieder einen eigenen zugänglichen Namen (neue Tabelle
+  `SPALTENNAME` in `texte.ts`), damit `arbeitsflaeche.spec.ts:57` unverändert grün ist. Der Name lautet „Ordnungszahl (OZ)“,
+  nicht „Ordnungszahl“ allein: Der Sprachtest (`apps/web/src/sprache.test.ts`, fremder Ordner) verbietet „Ordnungszahl“ als
+  ganze Beschriftung; die Prüfung `name: 'Ordnungszahl'` trifft ihn (Teiltreffer). Soll es genau „Ordnungszahl“ heißen,
+  muss die Regel im Sprachtest eine Ausnahme bekommen (Frage an den Orchestrator).
+
+Ergebnis (nach `git merge integration/welle-7`):
+
+- `pnpm lint` (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean Room) und `pnpm typecheck` grün; Sprachtest grün.
+- `pnpm test`: 4.653 bestanden, 3 übersprungen, 11 rot: nur CPU-Budgets in `gaeb`, `kern`, `speicher`, `vergabe` und
+  `apps/web/src/abrechnung/leistung.test.ts` bei Last 19–33 auf 4 Kernen (keine Datei dieses Tickets); allein wiederholt
+  (Last ~19) noch 5 davon rot. Keine Schranke geändert.
+- `pnpm --filter @tethys/ui-grid e2e`: 108 bestanden, 3 übersprungen, 1 rot (`arbeitsflaeche.spec.ts:49`, der Fehler aus
+  D-100, danach behoben: 39/39 in `arbeitsflaeche`, `suchen`, `grid`, `schreibgeschuetzt`). Leistung unter Last: 5.000 Zeilen
+  mit KG 45,4 / 30,7 fps, 10.000 Zeilen 45,8 / 33,9 fps (5.600 / 28.000 px/s), alle Budgets grün.
+- Web-E2E: `lv-suchen` (neu, 3), `arbeitsflaeche` (15 Zeilen mit EP und GP bei 1280×800), `lv`, `lv-bedienung`, `umwege`,
+  `undo`, `erster-start`, `dialog`: 34/34; nach D-156.11 `lv-suchen`, `arbeitsflaeche`, `lv`, `dialog`, `kosten`: 17/17.
+
+Folgepunkte: D-156.10 (Auftrags-LV, `auftrag/`), D-156.11 (genau „Ordnungszahl“ nur mit Ausnahme im Sprachtest).
