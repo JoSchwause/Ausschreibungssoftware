@@ -1,6 +1,6 @@
 # 161: Projekt samt Inhalt löschen: Kern, Speicher, Dialog
 
-Status: ready-for-agent
+Status: claimed
 Type: task
 Welle: 7 · Strang: K, S, E8 · Paket/Ordner: `packages/kern`, `packages/speicher`, `apps/web/src/projekt/`
 Blocked by: 160, 143 (Schreiber in `speicher`)
