@@ -5,7 +5,7 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import { fixtureInhalt } from './fixture-inhalt';
-import { erwarteMeldung, lvAnlegen, neueZeile, projektAnlegen, summen, zeilen } from './hilfen';
+import { lvAnlegen, neueZeile, projektAnlegen, summen, zeilen } from './hilfen';
 import { erwartePunkt, werkzeug } from './werkzeuge';
 
 const grid = (page: Page) => page.getByRole('treegrid', { name: 'Positionen' });
@@ -253,14 +253,16 @@ test('Projekt und LV löschen nur nach Bestätigung; Undo holt sie zurück', asy
   await frage.getByRole('button', { name: 'Abbrechen' }).click();
   await expect(lvListe).toContainText('Dach');
 
-  // Projekt löschen, solange es ein LV hat: verständliche Meldung, nichts gelöscht.
+  // Projekt löschen, solange es ein LV hat: Der Dialog nennt den Inhalt und bietet nur das Löschen samt Inhalt an
+  // (E8, eigener Ablauf in `projekt-samt-inhalt.spec.ts`); Abbrechen löscht nichts.
   await page.getByRole('button', { name: 'Weitere Aktionen' }).click();
   await page.getByRole('menuitem', { name: 'Projekt löschen' }).click();
-  await page
-    .getByRole('dialog', { name: 'Projekt löschen' })
-    .getByRole('button', { name: 'Endgültig löschen' })
-    .click();
-  await erwarteMeldung(page, 'Das Projekt hat noch LVs');
+  const projektFrage = page.getByRole('dialog', { name: 'Projekt löschen' });
+  await expect(projektFrage.getByRole('list', { name: 'Inhalt des Projekts' })).toHaveText('1 LV');
+  await expect(projektFrage.getByRole('button', { name: 'Endgültig löschen' })).toHaveCount(0);
+  await expect(projektFrage.getByRole('button', { name: 'Projekt samt Inhalt löschen …' })).toBeVisible();
+  await projektFrage.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(projektFrage).toBeHidden();
   await expect(page.getByRole('heading', { level: 1, name: 'Turnhalle' })).toBeVisible();
 
   await page.getByRole('button', { name: 'LV löschen: Dach' }).click();
