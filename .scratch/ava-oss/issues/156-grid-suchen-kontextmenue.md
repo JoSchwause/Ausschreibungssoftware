@@ -28,3 +28,47 @@ Herkunft: umfang §3 E4, B-09
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
+
+Entscheidungen im Demo-Modus (Branch `welle-7/156-suchen`):
+
+- **D-156.1** Nähte? → Reine Funktionen in `ui-grid/src/suche.ts` (`suchtreffer`, `gefilterteZeilen`, `vorfahrenZugeklappt`,
+  `filterText`; `suche.test.ts`, 12 Fälle), die neuen Kürzel in `kuerzel.test.ts`, `alleZeilenBauen` in
+  `lv/ansicht.test.ts`; das Grid über den Prüfstand (`e2e/suchen.spec.ts`, 10 Fälle; neue Parameter `alle`, `hilfe`,
+  `langtext`) und die App über `apps/web/e2e/lv-suchen.spec.ts` (3 Fälle).
+- **D-156.2** Wo wird gesucht, ohne das Budget zu reißen (Q4)? → Treffer entstehen nur im Ereignis (Tippen, Enter, F3), nie
+  beim Rendern; der Suchtext (OZ samt Index, Kurztext, Langtext als Klartext, kleingeschrieben) hängt in einer `WeakMap` am
+  unveränderlichen Knoten, nach einer Änderung wird nur der neue Knoten neu gelesen. Ohne Filter bekommt das Grid dieselbe
+  Zeilenliste wie bisher (kein Mehraufwand beim Scrollen). Kein Hervorheben des Suchtexts in den Zellen (das hieße jede Zeile
+  neu zeichnen); der Treffer ist die aktive Zelle, Stand „3 von 12“ im Feld und „Treffer 3 von 12 im Langtext.“ im Status.
+- **D-156.3** Zugeklappte Gliederungen? → Neue optionale Eigenschaft `alleZeilen?: () => readonly LvZeile[]` (alle Zeilen,
+  `aufgeklappt` wie in der Ansicht), erst beim Suchen oder bei aktivem Filter gerufen. Ein Treffer darunter klappt die
+  Vorfahren über `onAufklappen` auf und wird aktiv, sobald die Zeile da ist. Ohne die Eigenschaft sucht das Grid nur in den
+  sichtbaren Zeilen. Die App baut sie mit `alleZeilenBauen` (`lv/ansicht.ts`) auf der LV-Seite und im LV-Stand.
+- **D-156.4** Was heißt „Art“ im Filter? → Zeilenart: Positionen, Zuschlagspositionen, Hinweistexte, Titel und Lose; „Merkmal“:
+  Bedarf, Wahl, Stundenlohn, Pauschal (das Zuschlagskennzeichen ist eine Bezugsangabe, kein Filter); „ohne Preis“: Position
+  ohne EP, eine Zuschlagsposition nur, solange ihr Satz fehlt. Alle Angaben gelten zugleich. Gezeigt werden die passenden
+  Zeilen samt ihrer Gliederungen, alles offen und ohne Klappknopf. Native `select` in der Leiste (eine Zeile, schlicht; die
+  `Auswahl` aus `ui-basis` setzt das Label über das Feld).
+- **D-156.5** Filter sichtbar, ein Klick hebt auf → Die Leiste „Suchen und filtern“ steht über dem Grid, solange die Suche
+  offen oder ein Filter aktiv ist: „Gefiltert: Bedarf · 2 von 33 Zeilen“ mit „Filter aufheben“ (Fokus danach zurück ins
+  Grid). Ohne Suche und Filter nimmt sie keinen Platz (Ziel 15 Zeilen bei 1280×800 bleibt). Im Filter ist Verschieben
+  gesperrt (Ansage), weil Geschwister fehlen und ein Schritt über verborgene Zeilen spränge.
+- **D-156.6** Kontextmenü mit Radix: `@radix-ui/react-dropdown-menu` (dieselbe Version wie in `ui-basis`, MIT) als
+  Abhängigkeit von `ui-grid`, verankert an einem unsichtbaren Punkt (Mauszeiger bzw. aktive Zelle), nicht modal wie die
+  Werkzeuggruppen, Aussehen aus `tx-menue`. Die `Werkzeuggruppe` passt nicht (braucht eine sichtbare Schaltfläche);
+  `ui-basis` bleibt unberührt. Folge: drei Zeilen in `pnpm-lock.yaml`. Öffnen: rechte Maustaste an einer Zelle (die Zelle wird
+  aktiv, eine bestehende Auswahl bleibt, wenn die Zeile darin liegt), Umschalt+F10 und Menütaste. Punkte = die Aktionen der
+  Tasten mit der Taste daneben (aus `GRID_KUERZEL`); was die Taste nur als Schreibschutz ansagen würde, ist gesperrt. Die
+  Aktion läuft nach dem Schließen, wenn der Fokus wieder auf der Zelle steht. „Einfügen“ liest die Zwischenablage selbst
+  (`readText`); ohne Erlaubnis eine Ansage mit dem Hinweis auf Strg+V.
+- **D-156.7** Kürzelübersicht aus dem Grid → Punkt „Tastenkürzel anzeigen“ im Kontextmenü über die neue Eigenschaft
+  `onKuerzelhilfe`; die App wechselt zu `hilfePfad('tastenkuerzel')` (147). Dazu „Suchen und filtern“ (Strg+F) im Menü
+  „Bearbeiten“ der LV-Seite über die neue Eigenschaft `steuerung` (`LvGridSteuerung.suchen()`).
+- **D-156.8** Neue Kürzel in `GRID_KUERZEL`: Strg+F (Suchen), F3 und Umschalt+F3 (Treffer), Umschalt+F10 oder Menütaste
+  (Kontextmenü), nur im LV-Grid. Bereiche: die vorhandenen „Navigation“ und „Zeilen“, kein neuer Bereich, weil die
+  Reihenfolge der Bereiche in `hilfe/kuerzel.ts` steht (fremder Ordner); die Hilfeseite zeigt sie ohne Änderung.
+- **D-156.9** Hinweis `kalkulation-entfernt` (D-148.6) → `ui-grid` hat jetzt einen eigenen Text („Die Kalkulation der
+  Position wurde entfernt. Rückgängig stellt sie wieder her.“); die LV-Seite filtert ihn weiter heraus und zeigt ihr Band.
+- **D-156.10** Auftrags-LV (`auftrag/`, fremder Ordner): Suchen, Filtern und Kontextmenü wirken dort schon, aber nur über
+  die sichtbaren Zeilen und ohne Punkt „Tastenkürzel anzeigen“. Folgepunkt: `alleZeilen` und `onKuerzelhilfe` in
+  `AuftragsLvSeite` setzen (zwei Zeilen wie in `LvStandSeite`).
