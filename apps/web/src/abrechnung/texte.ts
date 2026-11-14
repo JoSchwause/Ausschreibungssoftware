@@ -98,6 +98,22 @@ export const texte = {
         return `${oz(b.positionId)}: keine Menge (Fehler im Mengenansatz); die Zeile zählt nicht.`;
     }
   },
+  ausgabe: {
+    gruppe: 'Ausgabe',
+    pdfKnopf: (name: string) => `${name} als PDF …`,
+    pdfTitel: (name: string) => `${name} als PDF`,
+    excelKnopf: (name: string) => `${name} als Excel …`,
+    excelTitel: (name: string) => `${name} als Excel`,
+    excelHinweis: 'Dieselben Zeilen und Beträge wie im PDF; Zahlen als Zahlen, mit Büro und Projekt im Kopf.',
+    aufmassblatt: 'Aufmaßblatt',
+    sollIst: 'Soll/Ist',
+    dateiname: 'Dateiname',
+    laeuft: 'Die Datei wird erzeugt …',
+    fehler: 'Die Datei konnte nicht erzeugt werden.',
+    herunterladen: 'Herunterladen',
+    schliessen: 'Schließen',
+    gespeichert: 'Datei gespeichert',
+  },
   meldungen: {
     angelegt: (nr: number) => `Aufmaßblatt ${String(nr)} angelegt`,
     geloescht: (nr: number) => `Aufmaßblatt ${String(nr)} gelöscht`,
