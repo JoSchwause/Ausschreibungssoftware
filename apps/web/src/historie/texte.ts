@@ -15,6 +15,18 @@ export const texte = {
       'Der gespeicherte Stand passt nicht mehr zu diesem Schritt. Es wurde nichts geändert; der Schritt bleibt im Verlauf.',
     teilweise: 'Ein Teil des Schritts wurde geschrieben, der Rest bleibt im Verlauf.',
   },
+  // Ticket 150 (D-82 M1): eigenes Rückgängig der Einstellungen, getrennt von dem des Projekts
+  einstellungen: {
+    rueckgaengig: 'Einstellung rückgängig',
+    wiederholen: 'Einstellung wiederholen',
+    nichtsRueckgaengig: 'Es gibt keine Änderung der Einstellungen, die sich rückgängig machen lässt.',
+    nichtsWiederholen: 'Es gibt keine Änderung der Einstellungen zu wiederholen.',
+    abgewiesen: 'Rückgängig der Einstellung nicht möglich',
+    wiederholenAbgewiesen: 'Wiederholen der Einstellung nicht möglich',
+    konflikt:
+      'Die Einstellungen wurden inzwischen auf anderem Weg geändert (etwa beim Einlesen einer Projektdatei). Es wurde nichts geändert.',
+    tastenHinweis: 'Strg+Z und Strg+Y wirken hier auf die Einstellungen, nicht auf das Projekt.',
+  },
   papierkorb: {
     knopf: 'Papierkorb',
     titel: 'Papierkorb',
