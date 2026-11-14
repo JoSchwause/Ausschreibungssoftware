@@ -1,49 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// Ticket 150: Die Bezeichnungen der Kostengruppen liegen in den Einstellungen des Speichers, nicht mehr im Browserspeicher.
 import { describe, expect, it } from 'vitest';
-import {
-  BEZEICHNUNGEN_SCHLUESSEL,
-  bezeichnungenAusCsv,
-  bezeichnungenGemerkt,
-  bezeichnungenMerken,
-} from './bezeichnungen';
-
-function ablage() {
-  const m = new Map<string, string>();
-  return {
-    m,
-    getItem: (k: string) => m.get(k) ?? null,
-    setItem: (k: string, v: string) => void m.set(k, v),
-    removeItem: (k: string) => void m.delete(k),
-  };
-}
-const kaputt = {
-  getItem: () => {
-    throw new Error('gesperrt');
-  },
-  setItem: () => {
-    throw new Error('gesperrt');
-  },
-  removeItem: () => {
-    throw new Error('gesperrt');
-  },
-};
+import { EinstellungenSitzung } from '../historie/einstellungen';
+import { speicherImSpeicher, testUmgebung } from '../testhilfen';
+import { bezeichnungenAusCsv, bezeichnungenGemerkt, bezeichnungenMerken } from './bezeichnungen';
 
 describe('Bezeichnungen der Kostengruppen', () => {
-  it('merkt den CSV-Text und vergisst ihn wieder', () => {
-    const a = ablage();
-    expect(bezeichnungenGemerkt(a)).toBeNull();
-    expect(bezeichnungenMerken('330;Wände', a)).toBe(true);
-    expect(a.m.get(BEZEICHNUNGEN_SCHLUESSEL)).toBe('330;Wände');
-    expect(bezeichnungenGemerkt(a)).toBe('330;Wände');
-    expect(bezeichnungenMerken(null, a)).toBe(true);
-    expect(bezeichnungenGemerkt(a)).toBeNull();
-  });
-
-  it('ein gesperrter oder fehlender Browserspeicher bricht nichts ab', () => {
-    expect(bezeichnungenGemerkt(kaputt)).toBeNull();
-    expect(bezeichnungenMerken('x', kaputt)).toBe(false);
-    expect(bezeichnungenGemerkt(null)).toBeNull();
-    expect(bezeichnungenMerken('x', null)).toBe(false);
+  it('merkt die Bezeichnungen der CSV in den Einstellungen und vergisst sie wieder', async () => {
+    const s = new EinstellungenSitzung(testUmgebung(await speicherImSpeicher()));
+    await s.laden();
+    expect(bezeichnungenGemerkt()).toBeNull();
+    expect(bezeichnungenMerken('Nummer;Bezeichnung\n340;Innen; und "Trenn"wände\n330;Wände\n')).toBe(true);
+    await s.laden(); // wartet, bis der Befehl geschrieben ist (die Sitzung reiht nacheinander)
+    expect(s.zustand.kostengruppenbezeichnungen).toEqual([
+      { nummer: '330', bezeichnung: 'Wände' },
+      { nummer: '340', bezeichnung: 'Innen' },
+    ]);
+    // Der gemerkte Text liest sich wieder zu denselben Bezeichnungen, auch mit Trennzeichen und Anführungszeichen im Text.
+    await s.befehl({
+      art: 'KostengruppenbezeichnungenSetzen',
+      bezeichnungen: [{ nummer: '330' as never, bezeichnung: 'Wände; "außen"' }],
+    });
+    expect([...bezeichnungenAusCsv(bezeichnungenGemerkt())]).toEqual([['330', 'Wände; "außen"']]);
+    expect(bezeichnungenMerken(null)).toBe(true);
+    await s.laden();
+    expect(s.zustand.kostengruppenbezeichnungen).toEqual([]);
+    expect(bezeichnungenGemerkt()).toBeNull();
   });
 
   it('liest Nummer und Bezeichnung aus der CSV; ohne CSV bleibt die Zuordnung leer', () => {
