@@ -40,12 +40,12 @@ describe('datumPruefen', () => {
 });
 
 describe('Benennung (Glossar „Kalenderdatum“, keine Synonyme)', () => {
-  it('das Paket benutzt den alten Namen `Datum` nirgends mehr; nur datum.ts und index.ts führen ihn für die App', () => {
+  it('das Paket führt den alten Namen `Datum` nicht mehr, auch nicht als Alias für die App (Ticket 163)', () => {
     const verzeichnis = dirname(fileURLToPath(import.meta.url));
     const nutzer = readdirSync(verzeichnis)
-      .filter((f) => f.endsWith('.ts') && f !== 'datum.ts' && f !== 'index.ts')
+      .filter((f) => f.endsWith('.ts') && f !== 'datum.test.ts')
       .filter((f) =>
-        /(?:[:<|(,]\s*|\bas\s+|\{\s*|,\s*)Datum\b(?![-\wäöü])/.test(
+        /(?:[:<|(,]\s*|\bas\s+|\btype\s+|\{\s*|,\s*)Datum\b(?![-\wäöü])/.test(
           readFileSync(join(verzeichnis, f), 'utf8'),
         ),
       );
