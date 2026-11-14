@@ -4,8 +4,16 @@
 // entfernen, Befunde der Zuordnung mit Sprung in den Baum (U5). Dazu „Aufmaßblatt aus Auswahl …“ bei einem Auftrags-LV.
 
 import { Auswahl, Button, Dialog, Eingabefeld, useToast } from '@tethys/ui-basis';
-import type { Bauwerksmodell, KnotenId, Position, PositionId, ProjektId } from '@tethys/vertrag';
-import { MENGENART_STUECK, zuordnungenPruefen } from '@tethys/bim';
+import {
+  MENGENART_STUECK,
+  type Bauwerksmodell,
+  type IfcGlobalId,
+  type KnotenId,
+  type Position,
+  type PositionId,
+  type ProjektId,
+} from '@tethys/vertrag';
+import { zuordnungenPruefen } from '@tethys/bim';
 import { useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { AufmassAusAuswahlDialog } from './AufmassAusAuswahlDialog';
@@ -37,7 +45,7 @@ export function ZuordnungBereich({
   modell: Bauwerksmodell;
   auswahl: readonly string[];
   zuordnungsLv: ZuordnungsLvStand;
-  zurZeile: (globalId: string) => void;
+  zurZeile: (globalId: IfcGlobalId) => void;
   gehe: (pfad: string) => void;
 }): ReactElement {
   const [dialog, setDialog] = useState<'zuordnen' | 'aufmass' | null>(null);
@@ -188,7 +196,7 @@ function ZuordnenDialog({
   auswahl: readonly string[];
   zuordnungsLv: ZuordnungsLvStand;
   onSchliessen: () => void;
-  zurZeile: (globalId: string) => void;
+  zurZeile: (globalId: IfcGlobalId) => void;
   zurPosition: (knotenId: KnotenId) => void;
   imModell: (globalId: string) => boolean;
 }): ReactElement {

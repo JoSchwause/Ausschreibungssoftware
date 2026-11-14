@@ -3,7 +3,8 @@
 // Modellseite, Mengenarten der Auswahl, Positionssuche und die Färbung „zugeordnet“/„ohne Zuordnung“ für die 3D-Ansicht.
 // Rein; die Prüfung der Zuordnungen gegen das Modell rechnet `bim` (`zuordnungenPruefen`).
 
-import { MENGENART_STUECK, zuordnungenPruefen } from '@tethys/bim';
+import { zuordnungenPruefen } from '@tethys/bim';
+import { MENGENART_STUECK } from '@tethys/vertrag';
 import type {
   Bauteilmenge,
   Bauteilzuordnung,
@@ -128,9 +129,9 @@ export type Zuordnungskennzeichen = 'zugeordnet' | 'ohne-zuordnung';
 export function zuordnungsfaerbung(
   modell: Bauwerksmodell,
   knoten: readonly Knoten[],
-): Map<string, Zuordnungskennzeichen> {
-  const ohne = new Set<string>(zuordnungenPruefen(knoten, modell).ohneZuordnung);
-  const f = new Map<string, Zuordnungskennzeichen>();
+): Map<IfcGlobalId, Zuordnungskennzeichen> {
+  const ohne = new Set<IfcGlobalId>(zuordnungenPruefen(knoten, modell).ohneZuordnung);
+  const f = new Map<IfcGlobalId, Zuordnungskennzeichen>();
   for (const b of modell.bauteile)
     if (!f.has(b.globalId)) f.set(b.globalId, ohne.has(b.globalId) ? 'ohne-zuordnung' : 'zugeordnet');
   return f;

@@ -11,7 +11,13 @@ import { VergleichsGrid } from '@tethys/ui-grid';
 import { Modellansicht } from '@tethys/ui-modell';
 import type { Ladebericht, ModellansichtRef } from '@tethys/ui-modell';
 import '@tethys/ui-modell/modellansicht.css';
-import type { BauwerksmodellId, BauwerksmodellZustand, ProjektId, Pruefbefund } from '@tethys/vertrag';
+import type {
+  BauwerksmodellId,
+  BauwerksmodellZustand,
+  IfcGlobalId,
+  ProjektId,
+  Pruefbefund,
+} from '@tethys/vertrag';
 import { formatiereMengeDe } from '@tethys/dezimal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
@@ -66,7 +72,7 @@ type Eigenschaftslage =
   | { art: 'laedt'; globalId: string }
   | { art: 'da'; globalId: string; wert: Objekteigenschaften | null };
 
-const KEINE_FAERBUNG: ReadonlyMap<string, never> = new Map<string, never>();
+const KEINE_FAERBUNG: ReadonlyMap<IfcGlobalId, never> = new Map<IfcGlobalId, never>();
 
 export function ModellSeite({
   projektId,
@@ -180,7 +186,7 @@ function Arbeitsflaeche({
   }, [fokus, bytes]);
 
   const onAuswahl = useCallback(
-    (ids: readonly string[], art: { readonly hinzufuegen: boolean }) => {
+    (ids: readonly IfcGlobalId[], art: { readonly hinzufuegen: boolean }) => {
       setStand((s) => beiKlick3d(s, baum, ids, art.hinzufuegen));
     },
     [baum],
@@ -192,7 +198,7 @@ function Arbeitsflaeche({
     [modell],
   );
   const zurZeile = useCallback(
-    (globalId: string) => {
+    (globalId: IfcGlobalId) => {
       setStand((s) => beiKlick3d(s, baum, [globalId], false));
     },
     [baum],

@@ -2,6 +2,7 @@
 // Was die Leinwand je Bauteil zeichnet, rein aus den Eingaben der Komponente (ohne three.js): sichtbar oder nicht, und in
 // welcher Farbe. Die Farben selbst kommen aus den Design-Tokens (`farben.ts`, U4).
 
+import type { IfcGlobalId } from '@tethys/vertrag';
 import type { Bauteilverzeichnis } from './zuordnung';
 
 /** Kennzeichen einer Färbung, z. B. aus dem Modellvergleich oder der Zuordnung zu Positionen. */
@@ -16,11 +17,11 @@ export const BAUTEILKENNZEICHEN: readonly Bauteilkennzeichen[] = [
 ];
 
 export interface Darstellungseingaben {
-  readonly auswahl: readonly string[];
-  readonly ausgeblendet: readonly string[];
+  readonly auswahl: readonly IfcGlobalId[];
+  readonly ausgeblendet: readonly IfcGlobalId[];
   /** `null`: nichts isoliert. Sonst sind nur diese Bauteile sichtbar (eine leere Liste zeigt nichts). */
-  readonly isoliert: readonly string[] | null;
-  readonly faerbung: ReadonlyMap<string, Bauteilkennzeichen>;
+  readonly isoliert: readonly IfcGlobalId[] | null;
+  readonly faerbung: ReadonlyMap<IfcGlobalId, Bauteilkennzeichen>;
 }
 
 /** `eigen`: die Farbe aus der IFC-Datei. */
@@ -33,7 +34,7 @@ export interface Bauteildarstellung {
   readonly farbe: readonly Anzeigefarbe[];
 }
 
-function markieren(verzeichnis: Bauteilverzeichnis, globalIds: Iterable<string>): boolean[] {
+function markieren(verzeichnis: Bauteilverzeichnis, globalIds: Iterable<IfcGlobalId>): boolean[] {
   const markiert = new Array<boolean>(verzeichnis.anzahl).fill(false);
   for (const id of globalIds) for (const i of verzeichnis.indizes(id)) markiert[i] = true;
   return markiert;
@@ -61,7 +62,7 @@ export function darstellungBerechnen(
 }
 
 export interface Auswahlereignis {
-  readonly globalIds: readonly string[];
+  readonly globalIds: readonly IfcGlobalId[];
   readonly hinzufuegen: boolean;
 }
 
@@ -69,7 +70,7 @@ export interface Auswahlereignis {
  * Was ein Klick auf die Leinwand meldet: das getroffene Bauteil (Strg bzw. Cmd ergänzt die Auswahl), ein Klick ins Leere
  * hebt die Auswahl auf; Strg+Klick ins Leere meldet nichts.
  */
-export function auswahlBeiKlick(getroffen: string | null, ergaenzen: boolean): Auswahlereignis | null {
+export function auswahlBeiKlick(getroffen: IfcGlobalId | null, ergaenzen: boolean): Auswahlereignis | null {
   if (getroffen === null) return ergaenzen ? null : { globalIds: [], hinzufuegen: false };
   return { globalIds: [getroffen], hinzufuegen: ergaenzen };
 }

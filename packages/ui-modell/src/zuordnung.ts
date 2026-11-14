@@ -2,23 +2,24 @@
 // Zuordnung der Geometrie zu Bauteilen. Der Worker kennt die expressID (Zeilennummer der IFC-Datei), die App nur die
 // GlobalId (D-50). Ein Bauteil ist hier jedes IfcElement außer Öffnungen und virtuellen Elementen (wie im Leser von
 // Ticket 98); Räume und Grundstück sind keine Elemente und werden nicht gezeichnet.
+import type { IfcGlobalId } from '@tethys/vertrag';
 
 /** Ein IfcElement der Datei, wie es web-ifc liefert. `klasse` ist der IFC-Klassenname (Groß-/Kleinschreibung egal). */
 export interface IfcElementEintrag {
   readonly expressId: number;
-  readonly globalId: string;
+  readonly globalId: IfcGlobalId;
   readonly klasse: string;
 }
 
 export interface Zuordnung {
   /** GlobalId je Bauteilindex. Ein Bauteilindex steht für ein gezeichnetes Bauteil, in der Reihenfolge der Geometrie. */
-  readonly globalIdJeIndex: readonly string[];
+  readonly globalIdJeIndex: readonly IfcGlobalId[];
   /** Bauteilindex je expressID, nur für gezeichnete Bauteile. */
   readonly indexJeExpressId: ReadonlyMap<number, number>;
   /** Die GlobalIds der gezeichneten Bauteile, jede einmal. */
-  readonly mitGeometrie: readonly string[];
+  readonly mitGeometrie: readonly IfcGlobalId[];
   /** Die GlobalIds der Bauteile, für die web-ifc keine Geometrie liefert, jede einmal (Reihenfolge der Datei). */
-  readonly ohneGeometrie: readonly string[];
+  readonly ohneGeometrie: readonly IfcGlobalId[];
 }
 
 /** Elementklassen, die keine Bauteile sind (Ticket 98: Öffnungen und virtuelle Elemente). */
@@ -46,7 +47,7 @@ export function zuordnen(
   for (const e of elemente) if (istBauteilklasse(e.klasse)) bauteile.set(e.expressId, e);
 
   const indexJeExpressId = new Map<number, number>();
-  const globalIdJeIndex: string[] = [];
+  const globalIdJeIndex: IfcGlobalId[] = [];
   for (const expressId of expressIdsMitGeometrie) {
     const bauteil = bauteile.get(expressId);
     if (!bauteil || indexJeExpressId.has(expressId)) continue;
@@ -55,7 +56,7 @@ export function zuordnen(
   }
 
   const gezeichnet = new Set(globalIdJeIndex);
-  const ohne = new Set<string>();
+  const ohne = new Set<IfcGlobalId>();
   for (const b of bauteile.values()) if (!gezeichnet.has(b.globalId)) ohne.add(b.globalId);
   return {
     globalIdJeIndex,
@@ -67,10 +68,10 @@ export function zuordnen(
 
 /** GlobalId ↔ Bauteilindex auf der Seite der Leinwand. Eine doppelte GlobalId steht für alle ihre Bauteile. */
 export class Bauteilverzeichnis {
-  readonly #globalIds: readonly string[];
+  readonly #globalIds: readonly IfcGlobalId[];
   readonly #indizes = new Map<string, number[]>();
 
-  constructor(globalIdJeIndex: readonly string[]) {
+  constructor(globalIdJeIndex: readonly IfcGlobalId[]) {
     this.#globalIds = globalIdJeIndex;
     globalIdJeIndex.forEach((id, i) => {
       const liste = this.#indizes.get(id);
@@ -83,17 +84,17 @@ export class Bauteilverzeichnis {
     return this.#globalIds.length;
   }
 
-  globalId(index: number): string {
+  globalId(index: number): IfcGlobalId {
     const id = this.#globalIds[index];
     if (id === undefined) throw new RangeError(`Kein Bauteil mit Index ${String(index)}`);
     return id;
   }
 
-  indizes(globalId: string): readonly number[] {
+  indizes(globalId: IfcGlobalId): readonly number[] {
     return this.#indizes.get(globalId) ?? [];
   }
 
-  enthaelt(globalId: string): boolean {
+  enthaelt(globalId: IfcGlobalId): boolean {
     return this.#indizes.has(globalId);
   }
 }

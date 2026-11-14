@@ -2,6 +2,7 @@
 // Selbst verfasste IFC-4-Prüfmodelle (C4) für Unit-Tests und den Prüfstand: Quader als extrudierte Rechtecke
 // (`IfcExtrudedAreaSolid` mit `IfcRectangleProfileDef`), wahlweise mit Öffnung (`IfcOpeningElement`, `IfcRelVoidsElement`),
 // Farbe und Transparenz. Die GlobalIds kommen aus einem Zähler, nie aus dem Zufall. Nur für Tests (testhilfe/).
+import type { IfcGlobalId } from '@tethys/vertrag';
 
 export interface Quader {
   /** Mitte der Grundfläche im Geschoss (IFC: z oben), in Metern */
@@ -53,12 +54,12 @@ export interface Modellvorgabe {
 const ALPHABET = /^[0-9A-Za-z_$]+$/;
 
 /** Feste, gültige GlobalId (22 Zeichen, IFC-Base64-Alphabet, erstes Zeichen 0): `0` + Präfix + Zahl mit Nullen. */
-export function globalId(praefix: string, n: number): string {
+export function globalId(praefix: string, n: number): IfcGlobalId {
   const ziffern = String(n);
   if (!ALPHABET.test(praefix) || 1 + praefix.length + ziffern.length > 22) {
     throw new Error(`GlobalId passt nicht: ${praefix} ${ziffern}`);
   }
-  return `0${praefix}${ziffern.padStart(21 - praefix.length, '0')}`;
+  return `0${praefix}${ziffern.padStart(21 - praefix.length, '0')}` as IfcGlobalId;
 }
 
 const zahl = (x: number): string => {
