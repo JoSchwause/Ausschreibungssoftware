@@ -68,3 +68,13 @@ gesperrten Ordnern; was dort nötig ist, an den Orchestrator melden.
   `auftragsLvBefehlAusfuehren` aus `@tethys/vergabe` in `auftrag/`, `kosten/`, `nachtrag/`, `hilfe/` und `rechnung/testpfad.ts`;
   `AuftragsLvSeite` mit `alleZeilen` und Kürzelhilfe (E2E in `lv-suchen.spec`); `lv-bedienung.spec` legt die Kalkulation über
   den Dialog an; E2E GAEB 2000 (`.p83`) in `gaeb.spec`; Ausnahme `createSyncAccessHandle` in der Basis-Pfad-Probe entfällt.
+- **D-159b.13 Zweiter Durchgang (152/161/162), R1–R7:**
+  R1 `abrechnung/Ausgabe.tsx`: Der Excel-Dialog zeigt „Die Datei konnte nicht erzeugt werden.“ mit dem nächsten Schritt aus
+  `fehler/texte.ts`, nie den Ausnahmetext (wie D-159b.1; PDF über den gemeinsamen Dialog). R2 `rechnung/pruefung.ts`
+  `zahlungsfreigabe(…, heute)`: „Skonto (noch nicht verwirklicht)“, solange `heute` ≤ Fristende (Fristtag eingeschlossen),
+  danach „nicht verwirklicht“; `heute` aus der Uhr der App. Test in `zahlungsfreigabe.test.ts`; die E2E erwartet je nach
+  Tagesdatum. Für den Druck (PA2, 159a) gilt dieselbe Regel mit dem Druckdatum als „heute“; `zahlungsfreigabe.spec.ts:341`
+  erwartet im PDF noch „Skonto (nicht verwirklicht)“ und muss mit PA2 nachziehen. R3 Nach „Zahlung löschen“ geht der Fokus auf
+  „Ändern …“ der nächsten Zahlung, sonst auf „Zahlung erfassen …“; die Beschriftungen nennen Datum und Betrag (E2E). R4 Text
+  des Hinweises zur Vertragsstrafe. R5 Spalte „Offen“ zeigt „–“ bis zur Freigabe (E2E). R7 `historie/texte.ts` `konflikt`
+  nennt den Fall und den nächsten Schritt.
