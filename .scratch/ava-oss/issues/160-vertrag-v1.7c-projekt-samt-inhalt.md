@@ -1,6 +1,6 @@
 # 160: `vertrag` v1.7c: Projekt samt Inhalt löschen
 
-Status: claimed
+Status: done-by-agent
 Type: task
 Welle: 7 · Strang: F, E8 · Paket/Ordner: `packages/vertrag`, `GLOSSARY.md` (mechanische Folgezeilen nur, wo der Typcheck sie erzwingt)
 Blocked by: – (nach 128)
@@ -24,10 +24,10 @@ Nach **D-96**:
 
 ## Acceptance criteria
 
-- [ ] Typtests; Lesarten als D-160.x für 161
-- [ ] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
+- [x] Typtests; Lesarten als D-160.x für 161
+- [x] `NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm typecheck && pnpm test` grün; betroffene E2E grün
   (`CI=1 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm --filter @tethys/web exec playwright test <spec> --trace off`)
-- [ ] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
+- [x] Kein Leistungsbudget gelockert, keine CI-Prüfung abgeschwächt; Texte für Nutzer nach L4/L5 (unpersönlich, keine
   Ticketnummern, keine Code-Kennungen, keine Paketnamen)
 
 ## Comments
@@ -104,3 +104,8 @@ sich; `ProjektLoeschen`, `ProjektChangeSet` und `ProjektBefehlAusfuehren` bleibe
 Offene Fragen für den Orchestrator: (1) D-160.9 weicht vom Wortlaut „byte-gleiche Projektdatei“ in D-96 ab (A5 verlangt den
 `Rueckgaengig`-Eintrag). (2) D-160.8: Die Kurzfassung ist heute nur Form, weil der Eintrag des Löschens wie bei D-31.1 nicht
 stehen bleibt.
+
+Ergebnis (nach Merge von `integration/welle-7`): Lint grün (ESLint, Prettier, Paketgrenzen, Lizenzen, Clean Room), Typcheck
+grün, Unit-Tests 4.700 grün, 3 übersprungen; rot im vollen Lauf nur 9 CPU-Leistungsbudgets unter Parallellast (Last ≈ 15–20 auf
+4 Kernen), alle einzeln wiederholt grün; keines gelockert. E2E `undo.spec.ts` und `projekt.spec.ts` grün (9). Keine Texte für
+Nutzer geändert.
