@@ -122,6 +122,7 @@ import {
   pruefeRechnungAnlegen,
   pruefeRechnungLoeschen,
   pruefeRechnungsaufmasse,
+  pruefeZahlungenNurFreigegeben,
 } from './bezuege';
 
 /** `auftraggeber = ?, …`: die Kopfdaten im UPDATE von LV und Auftrags-LV (Reihenfolge wie `kopfdatenSpalten`). */
@@ -1297,6 +1298,7 @@ export function wendeAufmassAn(db: Datenbank, cs: AufmassChangeSet, projektId: P
  * Rechnung anlegen, ändern oder löschen (`RechnungChangeSet`). Vor dem Schreiben die Bezüge (Auftrags-LV, Nummer,
  * `aufmassIds`) und die Regeln „keine spätere freigegebene“ beim Anlegen und Löschen, danach die Invariante der Freigaben
  * (D-34 (7)): Sie fängt das Freigeben und das Aufheben der Freigabe außer der Reihe.
+ * v1.7b (D-128.7, D-93): Zahlungen nur an einer freigegebenen Rechnung, sonst `konflikt` (auch für ein Undo).
  */
 export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId: ProjektId): void {
   const id = cs.rechnungId;
@@ -1316,6 +1318,7 @@ export function wendeRechnungAn(db: Datenbank, cs: RechnungChangeSet, projektId:
     pruefeRechnungAnlegen(db, nachher);
   }
   pruefeRechnungsaufmasse(db, nachher);
+  pruefeZahlungenNurFreigegeben(nachher); // v1.7b (D-128.7, D-93)
   const zeile = rechnungZeile(nachher);
   if (vorher === null) einfuegen(db, 'rechnung', zeile);
   else aendern(db, 'rechnung', zeile, ['angaben']); // Auftrags-LV und Nummer bleiben fest (oben geprüft)

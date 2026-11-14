@@ -199,6 +199,11 @@ export function befundtext(b: Rechnungsbefund, bezug: Befundbezug): string {
       return x['nachlass-ohne-basis'];
     case 'netto-nach-nachlass-negativ':
       return x['netto-nach-nachlass-negativ'];
+    // Befunde des Zahlungsstands (v1.7b, D-72); mechanisch ergänzt, die Oberfläche dazu baut Ticket 152.
+    case 'skonto-ohne-eingang':
+      return x['skonto-ohne-eingang'];
+    case 'zahlungen-ueber-auszahlung':
+      return x['zahlungen-ueber-auszahlung'](formatiereBetragDe(b.offen));
   }
 }
 

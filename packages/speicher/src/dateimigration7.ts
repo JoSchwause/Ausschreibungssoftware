@@ -8,6 +8,10 @@
 // Summe). Trägt eine Datei, die sich als Version 6 ausgibt, schon eines davon (am Projekt, an einem Bieter, im LV, im
 // Auftrags-LV, im Papierkorb, in einem LV-Stand oder im Protokoll), ist sie ungültig (in Version 6 war es unbekannt), nicht
 // still übernommen (Q5).
+//
+// Ticket 143 (D-93): Schema 7 trägt auch die Felder aus `vertrag` v1.7b an der Rechnung (`vertragsstrafe`, `skonto`,
+// `bauabzugsteuer`, `zahlungen`, alle optional, kein neues Schema) und ihre sechs Befehle. Eine Datei der Version 6 kann sie
+// ebenso nicht tragen; die Prüfung dafür kommt hier dazu (für gültige Dateien ändert sich nichts).
 
 import { abbruch } from './ergebnis';
 
@@ -48,7 +52,17 @@ const NEUE_BEFEHLE: readonly unknown[] = [
   'KalkulationSetzen',
   'PreisspiegelEinstellungenSetzen',
   'ZuschlagZuruecknehmen',
+  // v1.7b (Ticket 143, D-93)
+  'VertragsstrafeSetzen',
+  'SkontoSetzen',
+  'BauabzugsteuerSetzen',
+  'ZahlungErfassen',
+  'ZahlungAendern',
+  'ZahlungLoeschen',
 ];
+
+/** Die Felder der Rechnung aus `vertrag` v1.7b (D-93); in einer Datei der Version 6 kann keines davon stehen. */
+const NEUE_RECHNUNGSFELDER = ['vertragsstrafe', 'skonto', 'bauabzugsteuer', 'zahlungen'] as const;
 
 /** Projektdatei Version 6 → 7: unverändert, bis auf die Prüfung, dass das Neue aus Version 7 noch fehlt. */
 export function dateiAuf7(roh: Roh): Roh {
@@ -69,6 +83,10 @@ export function dateiAuf7(roh: Roh): Roh {
         a['knoten'],
         `$.auftragsLeistungsverzeichnisse[${String(i)}].auftragsLeistungsverzeichnis.knoten`,
       );
+  });
+  alsListe(roh['rechnungen']).forEach((z, i) => {
+    const r = istObjekt(z) ? z['rechnung'] : undefined;
+    for (const f of NEUE_RECHNUNGSFELDER) ohneFeld(r, f, `$.rechnungen[${String(i)}].rechnung`);
   });
   alsListe(roh['lvStaende']).forEach((s, i) => {
     if (istObjekt(s)) lvZustandOhneNeues(s['zustand'], `$.lvStaende[${String(i)}].zustand`);
