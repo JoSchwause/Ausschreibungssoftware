@@ -4,7 +4,7 @@
 // Rückgängig oder Wiederholen lädt die Seite neu. Weist der Speicher ab (`konflikt`), steht der Grund als Meldung da und
 // nichts ändert sich (Q5).
 
-import { Button, useToast } from '@tethys/ui-basis';
+import { Button, Werkzeugleiste, useToast } from '@tethys/ui-basis';
 import type { ProjektId, Rechnung, RechnungBefehl, Rechnungsart } from '@tethys/vertrag';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
@@ -195,7 +195,7 @@ function Ansicht({
           <Verweis pfad={rechnungenPfad(projektId, kopf.id)} text={t.zurListe} gehe={gehe} />
         )}
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={t.werkzeuge}>
+      <Werkzeugleiste beschriftung={t.werkzeuge}>
         <HistorieKnoepfe />
         <Button
           onClick={() => {
@@ -209,7 +209,7 @@ function Ansicht({
           ziel={gewaehlt?.id ?? null}
           onUebernehmen={xrechnungUebernehmen}
         />
-      </div>
+      </Werkzeugleiste>
       {adresse.rechnungId === null ? (
         <Rechnungsliste rechnungen={rechnungen} stand={stand} gehe={gehe} />
       ) : gewaehlt === null ? (

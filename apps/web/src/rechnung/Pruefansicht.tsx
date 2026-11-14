@@ -3,14 +3,21 @@
 // mit Differenz (D-44), Befunde (U5). Freigeben mit ausdrücklicher Bestätigung (Q5: friert den Zahlbetrag ein), gesperrt
 // mit Erklärung, solange eine frühere Rechnung offen ist; „Freigabe aufheben“ und „Rechnung löschen“ ebenfalls mit
 // Bestätigung. Gerechnet wird nur in `abrechnung` (`pruefung.ts`), Zahlen nur hier am Rand formatiert (N4).
+// Ticket 152 (A5, E11): Vertragsstrafe in der Kette, Zahlungsfreigabe mit Zahlungen (`Zahlungsbereich`), „Freigabe aufheben“
+// gesperrt, solange Zahlungen bestehen; „Ausgabe“ mit der Rechnungsprüfung samt Zahlungsfreigabe als PDF (Vorschau) und Excel.
 
-import { Button, Dialog, useToast } from '@tethys/ui-basis';
+import { Button, Dialog, Werkzeuggruppe, Werkzeugleiste, useToast } from '@tethys/ui-basis';
+import { BAUABZUGSTEUER_SATZ } from '@tethys/vertrag';
 import type { AufmassId, PositionId, Rechnung, RechnungBefehl } from '@tethys/vertrag';
 import { useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { datumDe } from '../lv/kopfdaten';
 import { formatiereBetragDe, formatiereProzentDe } from '../lv/zahlen';
 import { texte as ntexte } from '../nachtrag/texte';
+import { BerichtAusgabe } from '../abrechnung/Ausgabe';
+import { dateinameRechnungspruefung, rechnungspruefungEingabe } from '../abrechnung/berichte';
+import { useUmgebung } from '../speicher/SpeicherAnbieter';
+import { Zahlungsbereich } from './Zahlungsbereich';
 import { befundtext, freigabelage, kettenzeilen, nachtragsinfo, pruefen, vergleichszeilen } from './pruefung';
 import type { Rechnungsstand } from './rechnungen';
 import { texte } from './texte';
@@ -36,11 +43,12 @@ export function Pruefansicht({
   onGeloescht: () => void;
 }): ReactElement {
   const { zeige } = useToast();
+  const u = useUmgebung();
   const hinweisId = useId();
   const [frage, setFrage] = useState<Frage | null>(null);
   const pruefung = useMemo(() => pruefen(rechnung, stand, rechnungen), [rechnung, stand, rechnungen]);
   const lage = useMemo(() => freigabelage(rechnung, rechnungen), [rechnung, rechnungen]);
-  const kette = useMemo(() => kettenzeilen(pruefung.kette), [pruefung]);
+  const kette = useMemo(() => kettenzeilen(pruefung.kette, rechnung.vertragsstrafe), [pruefung, rechnung]);
   const vergleich = useMemo(() => vergleichszeilen(pruefung), [pruefung]);
   const nachtraege = useMemo(() => nachtragsinfo(stand.nachtraege), [stand]);
   const blattname = useMemo(() => {
@@ -110,7 +118,7 @@ export function Pruefansicht({
               : texte.freigabe.offen}
           </dd>
         </dl>
-        <div className="lv__werkzeuge">
+        <Werkzeugleiste beschriftung={t.aktionen}>
           {lage.art === 'offen' ? (
             <Button
               variante="primaer"
@@ -150,7 +158,27 @@ export function Pruefansicht({
           >
             {texte.aktionen.loeschen}
           </Button>
-        </div>
+          <Werkzeuggruppe titel={t.ausgabe}>
+            <BerichtAusgabe
+              projektId={rechnung.projektId}
+              name={t.bericht}
+              dateiname={(endung) => dateinameRechnungspruefung(stand.auftrag, rechnung, endung)}
+              schluessel={JSON.stringify([rechnung, pruefung.kette.zahlbetrag, befunde])}
+              pdf={(kopf) => ({
+                art: 'rechnungspruefung',
+                eingabe: rechnungspruefungEingabe(rechnung, stand, pruefung, befunde, kopf),
+              })}
+              excel={async (kopf) => {
+                const a = await import('@tethys/ausgabe');
+                return a.berichtAlsExcel(
+                  a.baueRechnungspruefungModell(
+                    rechnungspruefungEingabe(rechnung, stand, pruefung, befunde, kopf),
+                  ),
+                );
+              }}
+            />
+          </Werkzeuggruppe>
+        </Werkzeugleiste>
         {lage.grund === null ? null : (
           <p id={hinweisId} className="rechnung__hinweis">
             {lage.grund}
@@ -275,10 +303,38 @@ export function Pruefansicht({
                   ? '–'
                   : `${formatiereProzentDe(rechnung.gewaehrleistungSatz)} %`}
               </dd>
+              <dt>{texte.feld.vertragsstrafeBetrag}</dt>
+              <dd data-testid="angabe-vertragsstrafe">
+                {rechnung.vertragsstrafe === undefined
+                  ? '–'
+                  : t.strafeAngabe(
+                      formatiereBetragDe(rechnung.vertragsstrafe.betrag),
+                      rechnung.vertragsstrafe.grund,
+                    )}
+              </dd>
+              <dt>{t.skonto}</dt>
+              <dd data-testid="angabe-skonto">
+                {rechnung.skonto === undefined
+                  ? '–'
+                  : t.skontoAngabe(formatiereProzentDe(rechnung.skonto.satz), rechnung.skonto.fristTage)}
+              </dd>
+              <dt>{t.bauabzugsteuer}</dt>
+              <dd data-testid="angabe-bauabzugsteuer">
+                {rechnung.bauabzugsteuer === true
+                  ? t.steuerAn(formatiereProzentDe(BAUABZUGSTEUER_SATZ))
+                  : t.steuerAus}
+              </dd>
             </dl>
           </section>
         </div>
       </div>
+
+      <Zahlungsbereich
+        rechnung={rechnung}
+        zahlungsstand={pruefung.zahlungsstand}
+        ids={u.ids}
+        befehle={befehle}
+      />
 
       <Dialog
         offen={frage !== null}

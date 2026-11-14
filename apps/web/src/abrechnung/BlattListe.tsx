@@ -4,7 +4,7 @@
 // Anlegen ist ein Befehl über den Befehlsweg (A5) und ein Undo-Schritt; danach öffnet die App das neue Blatt.
 
 import { naechsteAufmassnummer } from '@tethys/abrechnung';
-import { Button, useToast } from '@tethys/ui-basis';
+import { Button, Werkzeugleiste, Werkzeugverweis, useToast } from '@tethys/ui-basis';
 import type { Aufmass, Aufmassposition } from '@tethys/vertrag';
 import { useState } from 'react';
 import type { ReactElement } from 'react';
@@ -58,7 +58,7 @@ export function BlattListe({
         <h1>{t.titel(a.name)}</h1>
         <Verweis pfad={auftragPfad(a.projektId, a.id)} text={texte.zumAuftrag} gehe={gehe} />
       </div>
-      <div className="lv__werkzeuge" role="toolbar" aria-label={texte.werkzeuge}>
+      <Werkzeugleiste beschriftung={texte.werkzeuge}>
         <HistorieKnoepfe />
         <Button
           variante="primaer"
@@ -69,13 +69,15 @@ export function BlattListe({
           {t.neu}
         </Button>
         <X31Einlesen auftrag={stand.auftrag} naechsteNummer={nummer} anlegen={anlegen} />
-        <Verweis
-          pfad={sollIstPfad(a.projektId, a.id)}
-          text={t.sollIst}
-          gehe={gehe}
-          className="tx-button tx-button--sekundaer"
-        />
-      </div>
+        <Werkzeugverweis
+          href={sollIstPfad(a.projektId, a.id)}
+          onFolgen={() => {
+            gehe(sollIstPfad(a.projektId, a.id));
+          }}
+        >
+          {t.sollIst}
+        </Werkzeugverweis>
+      </Werkzeugleiste>
       {stand.blaetter.length === 0 ? (
         <p>{t.leer}</p>
       ) : (

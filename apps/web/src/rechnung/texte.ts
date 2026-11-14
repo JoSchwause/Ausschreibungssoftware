@@ -24,6 +24,11 @@ export const texte = {
     umlageSatz: (i: number) => `Satz der Umlage ${String(i + 1)}`,
     sicherheitSatz: 'Sicherheitseinbehalt',
     gewaehrleistungSatz: 'Gewährleistungseinbehalt',
+    vertragsstrafeBetrag: 'Vertragsstrafe (brutto, kumuliert)',
+    vertragsstrafeGrund: 'Grund der Vertragsstrafe',
+    skontoSatz: 'Skontosatz',
+    skontoFrist: 'Skontofrist',
+    bauabzugsteuer: 'Bauabzugsteuer einbehalten',
   },
   formular: {
     titelNeu: (nummer: number) => `Rechnung ${String(nummer)} anlegen`,
@@ -44,6 +49,22 @@ export const texte = {
     hinweisEinbehalt:
       'Der Sicherheitseinbehalt gilt in Abschlagsrechnungen, der Gewährleistungseinbehalt in der Schlussrechnung.',
     unlesbar: 'Bitte die markierten Felder prüfen; es wurde nichts gespeichert.',
+    a5: 'Vertragsstrafe, Skonto und Bauabzugsteuer',
+    strafeBetragFehlt: 'Bitte einen Betrag angeben oder den Grund leeren.',
+    strafeBetragPositiv:
+      'Die Vertragsstrafe muss größer als 0,00 € sein; ohne Vertragsstrafe beide Felder leeren.',
+    strafeGrundFehlt: 'Bitte einen Grund der Vertragsstrafe angeben.',
+    hinweisStrafe:
+      'Die Vertragsstrafe ist ein Bruttobetrag ohne MwSt, kumuliert bis zu dieser Rechnung; vorgeschlagen wird die der vorigen Rechnung.',
+    skontoSatzFehlt: 'Bitte einen Skontosatz angeben oder die Frist leeren.',
+    skontoSatzBereich: 'Der Skontosatz muss größer als 0 und kleiner als 100 % sein.',
+    skontoFristFehlt: 'Bitte die Skontofrist in Kalendertagen angeben.',
+    skontoFristBereich: 'Die Skontofrist ist eine ganze Zahl von 1 bis 365 Kalendertagen.',
+    fristHinweis: 'Kalendertage',
+    hinweisSkonto:
+      'Die Frist beginnt am Tag nach dem Eingangsdatum; eine Zahlung am letzten Tag der Frist ist rechtzeitig.',
+    hinweisSteuer: (satz: string) =>
+      `Die Bauabzugsteuer (${satz} %) geht an das Finanzamt und mindert nur die Auszahlung, nicht den Zahlbetrag.`,
     abbrechen: 'Abbrechen',
     speichern: 'Speichern',
   },
@@ -85,6 +106,8 @@ export const texte = {
     umlage: (bezeichnung: string, satz: string) => `Umlage ${bezeichnung} (${satz} %)`,
     sicherheit: (satz: string | null) =>
       satz === null ? 'Sicherheitseinbehalt (kein Satz)' : `Sicherheitseinbehalt (${satz} %)`,
+    vertragsstrafe: (grund: string | null) =>
+      grund === null ? 'Vertragsstrafe' : `Vertragsstrafe (${grund})`,
     gewaehrleistung: (satz: string | null) =>
       satz === null ? 'Gewährleistungseinbehalt (kein Satz)' : `Gewährleistungseinbehalt (${satz} %)`,
     frueher: (nummer: number) => `Zahlbetrag Rechnung ${String(nummer)} (freigegeben)`,
@@ -106,6 +129,16 @@ export const texte = {
     keineBefunde: 'Keine Befunde.',
     leistungsstand: 'Leistungsstand je Position',
     nachtraege: 'Nicht beauftragte Nachträge',
+    aktionen: 'Aktionen der Rechnung',
+    ausgabe: 'Ausgabe',
+    bericht: 'Rechnungsprüfung',
+    skonto: 'Skonto',
+    bauabzugsteuer: 'Bauabzugsteuer',
+    strafeAngabe: (betrag: string, grund: string) => `${betrag} € (${grund})`,
+    skontoAngabe: (satz: string, tage: number) =>
+      `${satz} % bei Zahlung binnen ${String(tage)} ${tage === 1 ? 'Kalendertag' : 'Kalendertagen'} nach Eingang`,
+    steuerAn: (satz: string) => `einbehalten (${satz} %, an das Finanzamt)`,
+    steuerAus: 'nicht einbehalten',
     nachtraegeHinweis:
       'Nur zur Information: Ein Nachtrag geht erst in die Rechnung, wenn er beauftragt und ins Auftrags-LV übernommen ist.',
     nachtragZeile: (nummer: string, status: string, netto: string) =>
@@ -133,9 +166,9 @@ export const texte = {
     'nachlass-ohne-basis': 'Der absolute Nachlass hat keine Basis (Auftrags-LV netto 0,00); er zählt 0,00.',
     'netto-nach-nachlass-negativ': 'Das Netto nach Nachlass ist negativ.',
     'skonto-ohne-eingang':
-      'Skonto vereinbart, aber kein Eingangsdatum: ohne Fristende gibt es keinen Skonto.',
+      'Skonto vereinbart, aber kein Eingangsdatum: Ohne Skontofrist gibt es keinen Skonto. Das Eingangsdatum lässt sich unter „Angaben bearbeiten“ nachtragen.',
     'zahlungen-ueber-auszahlung': (offen: string) =>
-      `Gezahlt wurde mehr als die Auszahlung (offen ${offen} €).`,
+      `Gezahlt wurde mehr als die Auszahlung an den Auftragnehmer (offen ${offen} €). Bitte die Zahlungen prüfen.`,
   },
   freigabe: {
     knopf: 'Freigeben',
@@ -152,12 +185,66 @@ export const texte = {
     aufhebenFrage:
       'Der eingefrorene Zahlbetrag wird verworfen; die Rechnung ist danach wieder offen und änderbar. Rückgängig stellt die Freigabe wieder her.',
     aufhebenBestaetigen: 'Freigabe aufheben',
+    aufhebenZahlungen: (nummer: number, anzahl: number) =>
+      `Zur Rechnung ${String(nummer)} ${anzahl === 1 ? 'ist 1 Zahlung' : `sind ${String(anzahl)} Zahlungen`} erfasst. Zuerst die Zahlungen löschen.`,
     aufhebenGesperrt: (spaeter: readonly number[]) =>
       `Rechnung ${nummern(spaeter)} ist schon freigegeben und zieht diesen Zahlbetrag ab. Zuerst deren Freigabe aufheben.`,
     status: (betrag: string) => `Freigegeben mit ${betrag} €`,
     offen: 'Offen (nicht freigegeben)',
     konflikt:
       'Der Speicher hat die Änderung abgewiesen: Freigaben gehen nur in der Reihenfolge der Rechnungsnummern. Es wurde nichts geändert.',
+  },
+  zahlung: {
+    titel: 'Zahlungsfreigabe',
+    zahlbetrag: 'Zahlbetrag',
+    skonto: (satz: string) => `Skonto (${satz} %)`,
+    bauabzugsteuer: (satz: string) => `Bauabzugsteuer ${satz} % an das Finanzamt`,
+    auszahlung: 'Auszahlung an den Auftragnehmer',
+    zahlbetragEingefroren: 'Zahlbetrag (eingefroren)',
+    zahlbetragVorschau: 'Zahlbetrag (geprüft, noch nicht freigegeben)',
+    skontoVerwirklicht: 'Skonto (verwirklicht)',
+    skontoNichtVerwirklicht: 'Skonto (nicht verwirklicht)',
+    summeZahlungen: 'Summe der Zahlungen',
+    offen: 'Offen',
+    posten: 'Posten',
+    bis: (datum: string) => `Bei Zahlung bis ${datum}`,
+    danach: 'Danach',
+    faelle: 'Beide Fälle des Skontos',
+    geltend: 'Geltender Fall',
+    satz: (datum: string, mit: string, ohne: string) =>
+      `Bei Zahlung bis ${datum}: Auszahlung ${mit} €, danach: ${ohne} €.`,
+    ohneEingang: (satz: string) =>
+      `Skonto ${satz} % vereinbart, aber ohne Eingangsdatum gibt es keine Skontofrist und keinen Skonto.`,
+    hinweis:
+      'Skonto und Bauabzugsteuer mindern nur die Auszahlung, nicht den Zahlbetrag. Der Skonto ist verwirklicht, wenn die Zahlungen bis zum Ende der Skontofrist die Auszahlung mit Skonto erreichen.',
+    vorschau: 'Vorschau: Die Rechnung ist noch nicht freigegeben; gerechnet wird vom geprüften Zahlbetrag.',
+    zahlungen: 'Zahlungen',
+    datum: 'Datum',
+    betrag: 'Betrag',
+    keine: 'Noch keine Zahlung erfasst.',
+    erfassen: 'Zahlung erfassen …',
+    erstFreigeben: 'Zahlungen lassen sich erst nach der Freigabe erfassen.',
+    aendern: (datum: string) => `Zahlung vom ${datum} ändern …`,
+    loeschen: (datum: string) => `Zahlung vom ${datum} löschen …`,
+    aendernKurz: 'Ändern …',
+    loeschenKurz: 'Löschen …',
+    aktionen: 'Aktionen',
+    titelNeu: 'Zahlung erfassen',
+    titelAendern: 'Zahlung ändern',
+    datumFeld: 'Zahlungsdatum',
+    betragFeld: 'Gezahlter Betrag',
+    speichern: 'Zahlung speichern',
+    abbrechen: 'Abbrechen',
+    datumFehlt: 'Bitte das Zahlungsdatum angeben (TT.MM.JJJJ).',
+    betragFehlt: 'Bitte den gezahlten Betrag angeben.',
+    betragPositiv:
+      'Der Betrag muss größer als 0,00 € sein; eine Rückzahlung kennt die Rechnungsprüfung nicht.',
+    loeschenTitel: 'Zahlung löschen',
+    loeschenFrage: (datum: string, betrag: string) =>
+      `Die Zahlung vom ${datum} über ${betrag} € wird gelöscht. In dieser Sitzung holt „Rückgängig“ sie zurück.`,
+    loeschenBestaetigen: 'Zahlung löschen',
+    gespeichert: 'Zahlung gespeichert',
+    geloescht: 'Zahlung gelöscht',
   },
   aktionen: {
     bearbeiten: 'Angaben bearbeiten',
