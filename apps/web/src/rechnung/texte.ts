@@ -24,6 +24,11 @@ export const texte = {
     umlageSatz: (i: number) => `Satz der Umlage ${String(i + 1)}`,
     sicherheitSatz: 'Sicherheitseinbehalt',
     gewaehrleistungSatz: 'Gewährleistungseinbehalt',
+    vertragsstrafeBetrag: 'Vertragsstrafe (brutto, kumuliert)',
+    vertragsstrafeGrund: 'Grund der Vertragsstrafe',
+    skontoSatz: 'Skontosatz',
+    skontoFrist: 'Skontofrist',
+    bauabzugsteuer: 'Bauabzugsteuer einbehalten',
   },
   formular: {
     titelNeu: (nummer: number) => `Rechnung ${String(nummer)} anlegen`,
@@ -44,6 +49,20 @@ export const texte = {
     hinweisEinbehalt:
       'Der Sicherheitseinbehalt gilt in Abschlagsrechnungen, der Gewährleistungseinbehalt in der Schlussrechnung.',
     unlesbar: 'Bitte die markierten Felder prüfen; es wurde nichts gespeichert.',
+    a5: 'Vertragsstrafe, Skonto und Bauabzugsteuer',
+    strafeBetragFehlt: 'Bitte einen Betrag angeben oder den Grund leeren.',
+    strafeBetragPositiv: 'Die Vertragsstrafe muss größer als 0,00 € sein; ohne Vertragsstrafe beide Felder leeren.',
+    strafeGrundFehlt: 'Bitte einen Grund der Vertragsstrafe angeben.',
+    hinweisStrafe:
+      'Die Vertragsstrafe ist ein Bruttobetrag ohne MwSt, kumuliert bis zu dieser Rechnung; vorgeschlagen wird die der vorigen Rechnung.',
+    skontoSatzFehlt: 'Bitte einen Skontosatz angeben oder die Frist leeren.',
+    skontoSatzBereich: 'Der Skontosatz muss größer als 0 und kleiner als 100 % sein.',
+    skontoFristFehlt: 'Bitte die Skontofrist in Kalendertagen angeben.',
+    skontoFristBereich: 'Die Skontofrist ist eine ganze Zahl von 1 bis 365 Kalendertagen.',
+    hinweisSkonto:
+      'Die Frist beginnt am Tag nach dem Eingangsdatum; eine Zahlung am letzten Tag der Frist ist rechtzeitig.',
+    hinweisSteuer: (satz: string) =>
+      `Die Bauabzugsteuer (${satz} %) geht an das Finanzamt und mindert nur die Auszahlung, nicht den Zahlbetrag.`,
     abbrechen: 'Abbrechen',
     speichern: 'Speichern',
   },

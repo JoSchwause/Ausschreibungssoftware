@@ -60,6 +60,11 @@ const leer: Rechnungsentwurf = {
   umlagen: [],
   sicherheitSatz: '',
   gewaehrleistungSatz: '',
+  vertragsstrafeBetrag: '',
+  vertragsstrafeGrund: '',
+  skontoSatz: '',
+  skontoFrist: '',
+  bauabzugsteuer: false,
 };
 
 describe('neuerEntwurf', () => {
@@ -109,6 +114,7 @@ describe('entwurfLesen', () => {
           sicherheitSatz: null,
           gewaehrleistungSatz: '3.00',
         },
+        a5: { vertragsstrafe: null, skonto: null, bauabzugsteuer: false },
       },
     });
   });
@@ -193,5 +199,92 @@ describe('Befehle', () => {
     const r = entwurfLesen({ ...entwurfAus(offen), aufmassIds: ['b1', 'b2'] as AufmassId[] });
     if (!r.ok) throw new Error('unlesbar');
     expect(aenderungsbefehle(offen, r.wert)).toEqual([]);
+  });
+});
+
+// Ticket 152 (A5, D-72): Vertragsstrafe, Skonto und Bauabzugsteuer an der Rechnung.
+describe('A5 im Formular', () => {
+  const mitA5: Rechnung = {
+    ...ar1,
+    vertragsstrafe: { betrag: '1500.00' as Betrag, grund: 'Zwischenfrist Rohbau überschritten' },
+    skonto: { satz: '3.00' as Prozent, fristTage: 14 },
+    bauabzugsteuer: true,
+  };
+
+  it('neue Rechnung: Vertragsstrafe, Skonto und Bauabzugsteuer der vorigen als Vorschlag (D-128.3, D-143.5)', () => {
+    const e = neuerEntwurf([mitA5], [blatt('b1', 1)]);
+    expect(e).toMatchObject({
+      vertragsstrafeBetrag: '1.500,00',
+      vertragsstrafeGrund: 'Zwischenfrist Rohbau überschritten',
+      skontoSatz: '3,00',
+      skontoFrist: '14',
+      bauabzugsteuer: true,
+    });
+  });
+
+  it('liest die Felder; Anlegen nimmt sie nur mit, wenn gesetzt („fehlt“ heißt keine/aus, D-128.2)', () => {
+    const r = entwurfLesen(neuerEntwurf([mitA5], [blatt('b1', 1)]));
+    if (!r.ok) throw new Error('unlesbar');
+    expect(r.wert.a5).toEqual({
+      vertragsstrafe: { betrag: '1500.00', grund: 'Zwischenfrist Rohbau überschritten' },
+      skonto: { satz: '3.00', fristTage: 14 },
+      bauabzugsteuer: true,
+    });
+    const b = rechnungAnlegenBefehl('r2' as RechnungId, P, A, [mitA5], r.wert);
+    expect(b.rechnung).toMatchObject({
+      vertragsstrafe: { betrag: '1500.00', grund: 'Zwischenfrist Rohbau überschritten' },
+      skonto: { satz: '3.00', fristTage: 14 },
+      bauabzugsteuer: true,
+    });
+
+    const ohne = entwurfLesen(neuerEntwurf([ar1], [blatt('b1', 1)]));
+    if (!ohne.ok) throw new Error('unlesbar');
+    const c = rechnungAnlegenBefehl('r2' as RechnungId, P, A, [ar1], ohne.wert);
+    expect(Object.keys(c.rechnung)).not.toContain('vertragsstrafe');
+    expect(Object.keys(c.rechnung)).not.toContain('skonto');
+    expect(Object.keys(c.rechnung)).not.toContain('bauabzugsteuer');
+  });
+
+  it('meldet unvollständige oder unzulässige Angaben am Feld, ohne etwas zu verwerfen', () => {
+    const felder = (e: Partial<Rechnungsentwurf>): string[] => {
+      const r = entwurfLesen({ ...leer, ...e });
+      return r.ok ? [] : r.fehler.map((f) => f.feld);
+    };
+    expect(felder({ vertragsstrafeBetrag: '1.500,00' })).toEqual(['vertragsstrafeGrund']);
+    expect(felder({ vertragsstrafeGrund: 'Verzug' })).toEqual(['vertragsstrafeBetrag']);
+    expect(felder({ vertragsstrafeBetrag: '0,00', vertragsstrafeGrund: 'Verzug' })).toEqual([
+      'vertragsstrafeBetrag',
+    ]);
+    expect(felder({ vertragsstrafeBetrag: '100', vertragsstrafeGrund: '   ' })).toEqual(['vertragsstrafeGrund']);
+    expect(felder({ skontoSatz: '3' })).toEqual(['skontoFrist']);
+    expect(felder({ skontoFrist: '14' })).toEqual(['skontoSatz']);
+    expect(felder({ skontoSatz: '100', skontoFrist: '14' })).toEqual(['skontoSatz']);
+    expect(felder({ skontoSatz: '0', skontoFrist: '14' })).toEqual(['skontoSatz']);
+    expect(felder({ skontoSatz: '2', skontoFrist: '0' })).toEqual(['skontoFrist']);
+    expect(felder({ skontoSatz: '2', skontoFrist: '366' })).toEqual(['skontoFrist']);
+    expect(felder({ skontoSatz: '2', skontoFrist: '1,5' })).toEqual(['skontoFrist']);
+    expect(felder({ skontoSatz: '2', skontoFrist: ' 365 ' })).toEqual([]);
+  });
+
+  it('Bearbeiten: je geänderter Angabe ein Befehl; entfernen schickt null bzw. false', () => {
+    const offen = { ...mitA5, freigabe: null };
+    const gleich = entwurfLesen(entwurfAus(offen));
+    if (!gleich.ok) throw new Error('unlesbar');
+    expect(aenderungsbefehle(offen, gleich.wert)).toEqual([]);
+
+    const r = entwurfLesen({
+      ...entwurfAus(offen),
+      vertragsstrafeBetrag: '',
+      vertragsstrafeGrund: '',
+      skontoSatz: '2,00',
+      skontoFrist: '10',
+      bauabzugsteuer: false,
+    });
+    if (!r.ok) throw new Error('unlesbar');
+    expect(aenderungsbefehle(offen, r.wert)).toEqual([
+      { art: 'VertragsstrafeSetzen', vertragsstrafe: null },
+      { art: 'SkontoSetzen', skonto: { satz: '2.00', fristTage: 10 } },
+      { art: 'BauabzugsteuerSetzen', bauabzugsteuer: false },
+    ]);
   });
 });
