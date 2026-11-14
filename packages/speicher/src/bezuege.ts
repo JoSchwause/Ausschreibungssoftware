@@ -179,6 +179,18 @@ export function pruefeRechnungsaufmasse(db: Datenbank, r: Rechnung): void {
 }
 
 /**
+ * Zahlungen nur an einer freigegebenen Rechnung (v1.7b, D-72, D-128.7, D-93; Q5): Ein ChangeSet, dessen `nachher` Zahlungen
+ * ohne Freigabe hätte, ist `konflikt`, auch ohne Ausführer (Undo von `RechnungFreigeben`, solange Zahlungen bestehen).
+ */
+export function pruefeZahlungenNurFreigegeben(r: Rechnung): void {
+  const n = r.zahlungen?.length ?? 0;
+  if (n > 0 && r.freigabe === null)
+    konflikt(
+      `Rechnung ${r.id} hätte ${String(n)} Zahlung(en) ohne Freigabe; erst die Zahlungen löschen, dann die Freigabe aufheben`,
+    );
+}
+
+/**
  * Nach dem Schreiben: Die freigegebenen Rechnungen des Auftrags-LV sind die mit den kleinsten Nummern (D-34 (7)). Verletzt
  * ist sie nach einer Freigabe, solange eine frühere nicht freigegeben ist, und nach dem Aufheben einer Freigabe, solange
  * eine spätere freigegeben ist.

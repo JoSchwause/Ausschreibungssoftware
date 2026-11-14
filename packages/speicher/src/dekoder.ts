@@ -11,6 +11,7 @@ import {
   BAUTEILMENGENARTEN,
   IFC_GLOBALID_MUSTER,
   IFC_SCHEMATA,
+  KALENDERDATUM_MUSTER,
   KOSTENGRUPPENNUMMER_MUSTER,
   MASSENBEFEHLSARTEN,
   MODELLDATEI_HASH_MUSTER,
@@ -133,6 +134,9 @@ import type {
   Rechnung,
   RechnungId,
   RechnungZustand,
+  Kalenderdatum,
+  Zahlung,
+  ZahlungId,
   Summenstand,
   TitelId,
   Umlage,
@@ -1050,24 +1054,97 @@ function aufmassZustand(x: unknown, pfad: string): AufmassZustand {
   return { aufmass };
 }
 
+const MONATSTAGE = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
+
+/** Ein Kalendertag `JJJJ-MM-TT`, den es gibt (v1.7b, `Zahlung.datum`; Form nach `KALENDERDATUM_MUSTER`). */
+function kalendertag(x: unknown, pfad: string): Kalenderdatum {
+  const s = zeichenkette(x, pfad);
+  if (!KALENDERDATUM_MUSTER.test(s)) return ungueltig(pfad, `kein Datum JJJJ-MM-TT: „${s}“`);
+  const [j, m, t] = s.split('-').map(Number) as [number, number, number];
+  const schalt = (j % 4 === 0 && j % 100 !== 0) || j % 400 === 0;
+  const tage = m === 2 && schalt ? 29 : (MONATSTAGE[m - 1] ?? 0);
+  if (j < 1 || t < 1 || t > tage) return ungueltig(pfad, `den Tag „${s}“ gibt es nicht`);
+  return s as Kalenderdatum;
+}
+
+/**
+ * Felder der Rechnung aus `vertrag` v1.7b (Ticket 143, D-72, D-93): alle optional, „fehlt“ ist die einzige Schreibweise für
+ * keine/aus (nie `null`, `false`, `[]`; D-128.2). Formen wie im Ausführer (D-128.3 bis D-128.6): Beträge > 0,00, Grund nicht
+ * leer, Skontosatz zwischen 0,00 und 100,00 (beide ausgeschlossen), Frist 1 bis 365 Tage, Zahlungsdatum ein Tag, den es
+ * gibt, Kennungen der Zahlungen eindeutig.
+ */
+const RECHNUNG_V17B = ['vertragsstrafe', 'skonto', 'bauabzugsteuer', 'zahlungen'] as const;
+
+function positiverBetrag(x: unknown, pfad: string): Betrag {
+  const b = dezimal(x, pfad, 'betrag');
+  if (b.startsWith('-') || /^0\.0+$/.test(b)) return ungueltig(pfad, `Betrag muss größer als 0,00 sein: „${b}“`);
+  return b as Betrag;
+}
+
+function rechnungV17b(o: Roh, p: string): Pick<Rechnung, (typeof RECHNUNG_V17B)[number]> {
+  const zahlungen = optional(o, 'zahlungen', (v) =>
+    nichtLeereListe(v, `${p}.zahlungen`).map((z, i): Zahlung => {
+      const q = `${p}.zahlungen[${String(i)}]`;
+      const zo = objekt(z, q, ['id', 'datum', 'betrag']);
+      return {
+        id: nichtLeer(feld(zo, 'id'), `${q}.id`) as ZahlungId,
+        datum: kalendertag(feld(zo, 'datum'), `${q}.datum`),
+        betrag: positiverBetrag(feld(zo, 'betrag'), `${q}.betrag`),
+      };
+    }),
+  );
+  if (zahlungen.zahlungen !== undefined)
+    eindeutig(
+      zahlungen.zahlungen.map((z) => z.id),
+      `${p}.zahlungen`,
+      'Zahlung',
+    );
+  return {
+    ...optional(o, 'vertragsstrafe', (v) => {
+      const q = `${p}.vertragsstrafe`;
+      const vo = objekt(v, q, ['betrag', 'grund']);
+      const grund = zeichenkette(feld(vo, 'grund'), `${q}.grund`);
+      if (grund.trim() === '') ungueltig(`${q}.grund`, 'leerer Grund');
+      return { betrag: positiverBetrag(feld(vo, 'betrag'), `${q}.betrag`), grund };
+    }),
+    ...optional(o, 'skonto', (v) => {
+      const q = `${p}.skonto`;
+      const so = objekt(v, q, ['satz', 'fristTage']);
+      const satz = dezimal(feld(so, 'satz'), `${q}.satz`, 'prozent');
+      if (satz.startsWith('-') || /^0\.0+$/.test(satz) || (satz.split('.')[0] ?? '').length > 2)
+        ungueltig(`${q}.satz`, `Skontosatz größer 0,00 und kleiner 100,00 erwartet: „${satz}“`);
+      const fristTage = ganzAbEins(feld(so, 'fristTage'), `${q}.fristTage`);
+      if (fristTage > 365) ungueltig(`${q}.fristTage`, `Skontofrist höchstens 365 Tage, nicht ${String(fristTage)}`);
+      return { satz: satz as Prozent, fristTage };
+    }),
+    ...optional(o, 'bauabzugsteuer', (v) => nurWahr(v, `${p}.bauabzugsteuer`)),
+    ...zahlungen,
+  };
+}
+
 function rechnungZustand(x: unknown, pfad: string): RechnungZustand {
   const z = objekt(x, pfad, ['rechnung']);
   const p = `${pfad}.rechnung`;
-  const o = objekt(feld(z, 'rechnung'), p, [
-    'id',
-    'projektId',
-    'auftragsLvId',
-    'nummer',
-    'art',
-    'eingang',
-    'rechnungsnummerAuftragnehmer',
-    'gefordert',
-    'aufmassIds',
-    'umlagen',
-    'sicherheitSatz',
-    'gewaehrleistungSatz',
-    'freigabe',
-  ]);
+  const o = objekt(
+    feld(z, 'rechnung'),
+    p,
+    [
+      'id',
+      'projektId',
+      'auftragsLvId',
+      'nummer',
+      'art',
+      'eingang',
+      'rechnungsnummerAuftragnehmer',
+      'gefordert',
+      'aufmassIds',
+      'umlagen',
+      'sicherheitSatz',
+      'gewaehrleistungSatz',
+      'freigabe',
+    ],
+    RECHNUNG_V17B,
+  );
   const betrag = (v: unknown, q: string): Betrag => dezimal(v, q, 'betrag') as Betrag;
   const prozent = (v: unknown, q: string): Prozent => dezimal(v, q, 'prozent') as Prozent;
   const gefordert = oderNull(feld(o, 'gefordert'), (v) => {
@@ -1117,7 +1194,11 @@ function rechnungZustand(x: unknown, pfad: string): RechnungZustand {
       const fo = objekt(v, `${p}.freigabe`, ['zahlbetrag']);
       return { zahlbetrag: betrag(feld(fo, 'zahlbetrag'), `${p}.freigabe.zahlbetrag`) };
     }),
+    ...rechnungV17b(o, p),
   };
+  // Invariante an `Rechnung` (v1.7b, D-128.7, Q5): Zahlungen gibt es nur an einer freigegebenen Rechnung.
+  if (rechnung.zahlungen !== undefined && rechnung.freigabe === null)
+    ungueltig(`${p}.zahlungen`, 'Zahlungen an einer nicht freigegebenen Rechnung');
   return { rechnung };
 }
 
@@ -1754,7 +1835,7 @@ const BEFEHLSARTEN: Record<Befehlsart, true> = {
   RechnungFreigeben: true,
   RechnungsfreigabeAufheben: true,
   RechnungLoeschen: true,
-  // v1.7b (Ticket 128): mechanisch ergänzt; Speichern der neuen Felder folgt mit Ticket 139
+  // v1.7b (Ticket 128; die neuen Felder der Rechnung liest und prüft `speicher` seit Ticket 143, D-93)
   VertragsstrafeSetzen: true,
   SkontoSetzen: true,
   BauabzugsteuerSetzen: true,
